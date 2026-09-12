@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>POS — {{ app_name }}</title>
   <meta id="currency-meta" data-currency="{{ currency }}">
+  <meta id="tax-meta"
+        data-tax-enabled="{{ '1' if tax_enabled else '0' }}"
+        data-tax-rate="{{ tax_rate }}"
+        data-tax-inclusive="{{ '1' if tax_inclusive else '0' }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ font_url }}&display=swap">
@@ -160,12 +164,25 @@
     <!-- ── Order items list ── -->
     <div class="cart-items" id="cart-items"></div>
 
-    <!-- Discount (hidden by default) -->
+    <!-- Discount (hidden by default, not shown for SC/PWD) -->
     <div class="cart-discount-row" id="cart-discount-row" style="display:none">
       <label for="discount-input">Discount ({{ currency }})</label>
       <input type="number" id="discount-input" class="form-control"
              min="0" step="1" placeholder="0" value="0">
     </div>
+
+    <!-- SC / PWD discount type selector -->
+    {% if tax_enabled %}
+    <div class="cart-discount-row" id="discount-type-row" style="display:flex;align-items:center;gap:.5rem">
+      <label for="discount-type-select" style="white-space:nowrap;font-size:.7rem">Customer Type</label>
+      <select id="discount-type-select" class="form-control" style="font-size:.75rem;padding:.3rem .5rem"
+              onchange="onDiscountTypeChange(this.value)">
+        <option value="regular">Regular</option>
+        <option value="senior_citizen">Senior Citizen (SC)</option>
+        <option value="pwd">PWD</option>
+      </select>
+    </div>
+    {% endif %}
 
     <!-- Footer -->
     <div class="cart-footer">
@@ -176,8 +193,16 @@
           <span>Subtotal</span>
           <span id="cart-subtotal">{{ currency }}0.00</span>
         </div>
+        <div class="totals-row" id="vat-display-row" style="display:none">
+          <span id="vat-label">VAT (12%)</span>
+          <span id="cart-vat" style="color:var(--text-dark-2)">{{ currency }}0.00</span>
+        </div>
+        <div class="totals-row" id="vat-exempt-row" style="display:none">
+          <span>VAT</span>
+          <span style="color:var(--success-text);font-size:.75rem">Exempt (SC/PWD)</span>
+        </div>
         <div class="totals-row" id="discount-display-row" style="display:none">
-          <span>Discount</span>
+          <span id="discount-label">Discount</span>
           <span id="cart-discount-display" style="color:var(--success-text)">
             -{{ currency }}0.00
           </span>
@@ -255,6 +280,10 @@
         <button class="btn btn-primary btn-checkout" id="btn-checkout" onclick="checkout()" disabled>
           Charge <span class="checkout-amount" id="checkout-total">{{ currency }}0.00</span>
         </button>
+      </div>
+      <!-- Legal note shown when SC/PWD type selected -->
+      <div id="sc-pwd-notice" style="display:none;font-size:.65rem;color:var(--text-dark-3);text-align:center;padding:.3rem .5rem;line-height:1.4">
+        RA 9994 / RA 10754 — 20% discount + VAT exemption applied. ID verification required.
       </div>
 
     </div>
@@ -365,11 +394,17 @@
           <path d="M4 17C4 19.21 7.58 21 12 21s8-1.79 8-4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </div>
-      <div class="receipt-brand-name">{{ app_name }}</div>
+      <div>
+        <div class="receipt-brand-name">{{ app_name }}</div>
+        {% if tin_number %}<div style="font-size:.6rem;opacity:.7;letter-spacing:.05em">TIN: {{ tin_number }}</div>{% endif %}
+        {% if business_address %}<div style="font-size:.6rem;opacity:.6;margin-top:.1rem">{{ business_address }}</div>{% endif %}
+        {% if business_contact %}<div style="font-size:.6rem;opacity:.6">{{ business_contact }}</div>{% endif %}
+      </div>
     </div>
 
     <div class="receipt-order-num" id="receipt-order-num">—</div>
     <div class="receipt-status">Order Complete!</div>
+    <div id="receipt-discount-type-label" style="display:none;font-size:.65rem;font-weight:700;letter-spacing:.08em;color:var(--brand);margin-top:.2rem;text-transform:uppercase"></div>
 
     <hr class="receipt-divider">
     <div id="receipt-items-list"></div>
@@ -382,8 +417,16 @@
       </div>
       <div class="receipt-row"><span>Subtotal</span><span id="receipt-subtotal">{{ currency }}0.00</span></div>
       <div class="receipt-row" id="receipt-discount-row" style="display:none">
-        <span>Discount</span>
+        <span id="receipt-discount-label">Discount</span>
         <span id="receipt-discount" style="color:var(--success)">-{{ currency }}0.00</span>
+      </div>
+      <div class="receipt-row" id="receipt-vat-row" style="display:none">
+        <span id="receipt-vat-label">VAT Included</span>
+        <span id="receipt-vat-amount">{{ currency }}0.00</span>
+      </div>
+      <div class="receipt-row" id="receipt-vat-exempt-row" style="display:none">
+        <span>VAT</span>
+        <span style="color:var(--success);font-size:.75rem;font-weight:700">EXEMPT</span>
       </div>
       <div class="receipt-row receipt-grand-total">
         <span>Total</span><span id="receipt-total">{{ currency }}0.00</span>
@@ -397,6 +440,14 @@
 
     <div class="receipt-cashier">
       Served by <strong>{{ current_user['full_name'] if current_user else 'Cashier' }}</strong>
+    </div>
+
+    <!-- Legal disclaimer on receipt -->
+    <div style="font-size:.58rem;color:var(--text-light-3);text-align:center;padding:.5rem .25rem 0;line-height:1.5;border-top:1px dashed var(--order-border);margin-top:.5rem">
+      This is an acknowledgment receipt only and is not a BIR-registered Official Receipt.
+      {% if bir_permit %}ATP No.: {{ bir_permit }}.{% endif %}
+      All prices in Philippine Peso ({{ currency }}). Prices are subject to change without prior notice.
+      For refunds, please see our Refund Policy. Thank you!
     </div>
 
     <div class="receipt-footer">

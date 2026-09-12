@@ -1,6 +1,6 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Settings{% endblock %}
-{% block page_title %}Settings{% endblock %}
+{% block page_title %}Settings &amp; Compliance{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -297,6 +297,141 @@
       </div>
     </div>
 
+    <!-- ─── Business Details ─────────────────────────────── -->
+    <div class="settings-card">
+      <div class="settings-card-header">
+        <span class="settings-card-icon">🏢</span>
+        <span class="settings-card-title">Business Details</span>
+      </div>
+      <div class="settings-card-body">
+        <p style="font-size:.75rem;color:var(--text-dark-3);margin:0 0 1rem">
+          Required for BIR-compliant receipts. Leave blank if not yet registered.
+        </p>
+        <div class="form-row">
+          <div class="form-group">
+            <label>BIR TIN Number</label>
+            <input type="text" name="tin_number" class="form-control"
+                   value="{{ settings.tin_number }}"
+                   placeholder="000-000-000-00000"
+                   maxlength="20"
+                   pattern="[\d\-]+"
+                   title="Digits and hyphens only">
+            <div style="font-size:.7rem;color:var(--text-dark-3);margin-top:.2rem">
+              BIR Tax Identification Number — printed on official receipts
+            </div>
+          </div>
+          <div class="form-group">
+            <label>BIR Permit / ATP No.</label>
+            <input type="text" name="bir_permit" class="form-control"
+                   value="{{ settings.bir_permit }}"
+                   placeholder="Authority to Print No.">
+            <div style="font-size:.7rem;color:var(--text-dark-3);margin-top:.2rem">
+              BIR Authority to Print / Accreditation No.
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>DTI / SEC Registration No.</label>
+            <input type="text" name="dti_sec_number" class="form-control"
+                   value="{{ settings.dti_sec_number }}"
+                   placeholder="DTI or SEC number">
+          </div>
+          <div class="form-group">
+            <label>Contact Number</label>
+            <input type="text" name="business_contact" class="form-control"
+                   value="{{ settings.business_contact }}"
+                   placeholder="+63 9XX XXX XXXX">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Business Address</label>
+          <input type="text" name="business_address" class="form-control"
+                 value="{{ settings.business_address }}"
+                 placeholder="Street, Barangay, City, Province">
+          <div style="font-size:.7rem;color:var(--text-dark-3);margin-top:.2rem">
+            Registered business address shown on receipts and printed reports
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Tax & Compliance (Philippine VAT) ────────────── -->
+    <div class="settings-card">
+      <div class="settings-card-header">
+        <span class="settings-card-icon">📋</span>
+        <span class="settings-card-title">Tax &amp; Compliance</span>
+      </div>
+      <div class="settings-card-body">
+        <div style="background:var(--menu-bg);border:1.5px solid var(--menu-border);border-radius:var(--r);padding:.875rem 1rem;margin-bottom:1rem;font-size:.75rem;color:var(--text-dark-2);line-height:1.55">
+          <strong style="color:var(--text-dark)">Philippine VAT Law (TRAIN Law — RA 10963)</strong><br>
+          Standard rate: <strong>12%</strong>. VAT-registered businesses must collect and remit VAT monthly/quarterly to the BIR.
+          Senior Citizens (RA 9994) and PWD (RA 10754) are entitled to a <strong>20% discount + VAT exemption</strong> on qualifying purchases.
+          Businesses with annual gross sales ≤ ₱3,000,000 may opt for the 3% Percentage Tax instead of VAT.
+        </div>
+
+        <!-- Enable VAT toggle -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem;background:var(--menu-bg);border:1.5px solid var(--menu-border);border-radius:var(--r);margin-bottom:.75rem">
+          <div>
+            <div style="font-size:.875rem;font-weight:700;color:var(--text-dark)">Enable VAT</div>
+            <div style="font-size:.75rem;color:var(--text-dark-3)">Compute and display VAT on every transaction</div>
+          </div>
+          <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0">
+            <input type="checkbox" name="tax_enabled" id="tax-enabled-toggle"
+                   {% if settings.tax_enabled == '1' %}checked{% endif %}
+                   style="opacity:0;width:0;height:0"
+                   onchange="toggleTaxFields(this.checked)">
+            <span style="position:absolute;cursor:pointer;inset:0;background:var(--menu-border-2);border-radius:99px;transition:.3s"
+                  id="tax-toggle-track"></span>
+          </label>
+        </div>
+
+        <div id="tax-fields" style="{{ 'display:none' if settings.tax_enabled != '1' }}">
+          <div class="form-row">
+            <div class="form-group">
+              <label>VAT Rate (%)</label>
+              <input type="number" name="tax_rate" class="form-control"
+                     value="{{ settings.tax_rate }}"
+                     min="0" max="100" step="0.01"
+                     style="max-width:100px">
+              <div style="font-size:.7rem;color:var(--text-dark-3);margin-top:.2rem">
+                Standard PH rate is 12% (TRAIN Law)
+              </div>
+            </div>
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:.5rem">
+                <input type="checkbox" name="tax_inclusive"
+                       {% if settings.tax_inclusive != '0' %}checked{% endif %}>
+                VAT-Inclusive Pricing
+              </label>
+              <div style="font-size:.7rem;color:var(--text-dark-3);margin-top:.35rem;line-height:1.4">
+                Check if your listed prices <strong>already include</strong> VAT (most common in PH retail).
+                Uncheck if VAT is added on top at checkout.
+              </div>
+            </div>
+          </div>
+
+          <!-- SC/PWD Discount note -->
+          <div style="background:#FFF7ED;border:1.5px solid #FBBF24;border-radius:var(--r);padding:.75rem 1rem;font-size:.75rem;color:#92400E;line-height:1.55">
+            <strong>Senior Citizen &amp; PWD Discount</strong> — enabled automatically when VAT is on.<br>
+            Cashiers can select <em>SC Discount</em> or <em>PWD Discount</em> on the POS terminal for qualifying customers.
+            The system will automatically compute: <strong>Remove VAT → Apply 20% discount → Zero VAT charged</strong>.
+          </div>
+        </div>
+
+        <!-- Unsupported Claims / Liability Disclaimer -->
+        <div style="margin-top:1rem;background:#F8F9FB;border:1.5px solid var(--menu-border);border-radius:var(--r);padding:.875rem 1rem;font-size:.7rem;color:var(--text-dark-3);line-height:1.6">
+          <strong style="color:var(--text-dark-2)">Disclaimer &amp; Limitation of Liability</strong><br>
+          This system generates <em>acknowledgment receipts only</em>, not BIR-registered Official Receipts (OR),
+          unless your receipt series has been registered and approved by the BIR under RR 18-2012.
+          Tax computations are based on the rates configured above; the store owner is solely responsible
+          for ensuring correct rates, timely BIR filings, and compliance with all applicable laws.
+          The software developer makes no warranty of fitness for a particular purpose and accepts no liability
+          for tax penalties, assessments, or underpayments arising from misconfiguration or misuse.
+        </div>
+      </div>
+    </div>
+
     <button type="submit" class="btn btn-primary btn-lg" style="width:100%">
       💾 Save Settings
     </button>
@@ -468,6 +603,23 @@ function updatePreview() {
 
 document.addEventListener('DOMContentLoaded', () => {
   applyColorToPreview(currentColor);
+  // Sync toggle track color on load
+  const tok = document.getElementById('tax-enabled-toggle');
+  if (tok) syncToggleTrack(tok.checked);
 });
+
+function toggleTaxFields(enabled) {
+  const fields = document.getElementById('tax-fields');
+  if (fields) fields.style.display = enabled ? '' : 'none';
+  syncToggleTrack(enabled);
+}
+
+function syncToggleTrack(on) {
+  const track = document.getElementById('tax-toggle-track');
+  if (track) {
+    track.style.background = on ? 'var(--brand)' : 'var(--menu-border-2)';
+    track.style.boxShadow  = on ? 'inset 0 0 0 13px var(--brand)' : '';
+  }
+}
 </script>
 {% endblock %}

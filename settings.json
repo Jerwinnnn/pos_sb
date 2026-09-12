@@ -2,9 +2,17 @@
   "store_name": "SABBI'S BURGER",
   "store_tagline": "POS",
   "currency_symbol": "₱",
-  "theme_color": "#F97316",
-  "theme_preset": "orange",
-  "font": "poppins",
+  "theme_color": "#1561f9",
+  "theme_preset": "custom",
+  "font": "inter",
   "logo_emoji": "🌮",
-  "receipt_footer": "Thank you for your purchase!"
+  "receipt_footer": "Thank you for your purchase!",
+  "tin_number": "1234567890",
+  "bir_permit": "345633",
+  "dti_sec_number": "12345",
+  "business_address": "Calvario Meycauayan Bulacan",
+  "business_contact": "+639123821312",
+  "tax_enabled": "1",
+  "tax_rate": "12",
+  "tax_inclusive": "1"
 }

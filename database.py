@@ -22,6 +22,40 @@ def init_db():
             conn.executescript(f.read())
     print("✅ Database initialized.")
 
+def migrate_db():
+    """Add columns/tables introduced after initial deploy. Safe to re-run."""
+    new_cols = [
+        ("transactions", "tax_rate",      "REAL DEFAULT 0"),
+        ("transactions", "tax_amount",    "REAL DEFAULT 0"),
+        ("transactions", "discount_type", "TEXT DEFAULT 'regular'"),
+        ("transactions", "vat_exempt",    "INTEGER DEFAULT 0"),
+    ]
+    with get_db() as conn:
+        for table, col, typedef in new_cols:
+            try:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typedef}")
+            except Exception:
+                pass  # column already exists — safe to ignore
+        # void_log is created by schema.sql on fresh DBs; ensure it exists on older ones
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS void_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                transaction_id INTEGER NOT NULL,
+                order_number TEXT NOT NULL,
+                total REAL NOT NULL,
+                discount REAL DEFAULT 0,
+                tax_amount REAL DEFAULT 0,
+                discount_type TEXT DEFAULT 'regular',
+                payment_method TEXT,
+                voided_by INTEGER,
+                voided_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                reason TEXT,
+                FOREIGN KEY (voided_by) REFERENCES users(id)
+            )
+        """)
+        conn.commit()
+    print("✅ Database migrated.")
+
 # ── Categories CRUD ──────────────────────────────────────
 
 def add_category(name, icon='🍔', image=None):
@@ -178,17 +212,57 @@ def generate_order_number():
 
 # ── Transactions ──────────────────────────────────────────
 
-def create_transaction(cart_items, payment_method, cash_tendered=None, served_by=None, discount=0, notes=None, gcash_ref=None):
+def create_transaction(cart_items, payment_method, cash_tendered=None, served_by=None,
+                        discount=0, notes=None, gcash_ref=None,
+                        discount_type='regular', tax_rate=0.0,
+                        tax_enabled=False, tax_inclusive=True):
+    """
+    Computes tax per Philippine TRAIN Law (RA 10963):
+      - Regular: 12% VAT inclusive (extract from price) or exclusive (add on top)
+      - Senior Citizen / PWD (RA 9994 / RA 10754):
+          1. Remove VAT from subtotal → net price
+          2. Apply 20% mandatory discount on net price
+          3. Transaction is VAT-exempt (zero VAT charged)
+    """
     subtotal = sum(item['quantity'] * item['unit_price'] for item in cart_items)
-    total = max(0, subtotal - (discount or 0))
-    change = (cash_tendered - total) if cash_tendered else 0
+    actual_discount = float(discount or 0)
+    tax_amount = 0.0
+    vat_exempt = 0
+    rate = float(tax_rate) if tax_enabled else 0.0
+
+    if discount_type in ('senior_citizen', 'pwd'):
+        vat_exempt = 1
+        if tax_enabled and tax_inclusive and rate > 0:
+            net_of_vat = subtotal / (1 + rate / 100)
+        else:
+            net_of_vat = subtotal
+        sc_discount = net_of_vat * 0.20
+        total = round(net_of_vat - sc_discount, 2)
+        actual_discount = round(subtotal - total, 2)  # effective discount = VAT removed + 20% off net
+        tax_amount = 0.0
+    else:
+        post_disc = max(0.0, subtotal - actual_discount)
+        if tax_enabled and rate > 0:
+            if tax_inclusive:
+                # VAT is embedded in the price; extract the component
+                tax_amount = round(post_disc * (rate / (100 + rate)), 2)
+            else:
+                # VAT added on top of the discounted subtotal
+                tax_amount = round(post_disc * (rate / 100), 2)
+                post_disc = post_disc + tax_amount
+        total = round(max(0.0, post_disc), 2)
+
+    change = round((cash_tendered - total), 2) if cash_tendered else 0
     order_number = generate_order_number()
 
     with get_db() as conn:
         cur = conn.execute("""
-            INSERT INTO transactions (order_number, total, discount, cash_tendered, change_given, payment_method, gcash_ref, served_by, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (order_number, total, discount or 0, cash_tendered, change, payment_method, gcash_ref, served_by, notes))
+            INSERT INTO transactions
+                (order_number, total, discount, tax_rate, tax_amount, discount_type, vat_exempt,
+                 cash_tendered, change_given, payment_method, gcash_ref, served_by, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (order_number, total, actual_discount, rate, tax_amount, discount_type, vat_exempt,
+              cash_tendered, change, payment_method, gcash_ref, served_by, notes))
         transaction_id = cur.lastrowid
 
         for item in cart_items:
@@ -347,9 +421,26 @@ def restock_product(product_id, add_qty):
                      (int(add_qty), product_id))
         conn.commit()
 
-def void_transaction(transaction_id):
-    """Restore stock and delete transaction."""
+def void_transaction(transaction_id, voided_by=None, reason=None):
+    """Write void audit log, restore stock, then delete transaction."""
     with get_db() as conn:
+        tx = conn.execute(
+            "SELECT * FROM transactions WHERE id=?", (transaction_id,)
+        ).fetchone()
+        if not tx:
+            raise ValueError(f"Transaction {transaction_id} not found")
+
+        # Write immutable void audit record before any deletion (BIR compliance)
+        conn.execute("""
+            INSERT INTO void_log
+                (transaction_id, order_number, total, discount, tax_amount,
+                 discount_type, payment_method, voided_by, reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (transaction_id, tx['order_number'], tx['total'], tx['discount'],
+              tx['tax_amount'] if 'tax_amount' in tx.keys() else 0,
+              tx['discount_type'] if 'discount_type' in tx.keys() else 'regular',
+              tx['payment_method'], voided_by, reason))
+
         items = conn.execute(
             "SELECT product_id, quantity FROM transaction_items WHERE transaction_id=?",
             (transaction_id,)

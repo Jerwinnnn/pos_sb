@@ -28,6 +28,10 @@ CREATE TABLE IF NOT EXISTS transactions (
     order_number TEXT NOT NULL,
     total REAL NOT NULL,
     discount REAL DEFAULT 0,
+    tax_rate REAL DEFAULT 0,
+    tax_amount REAL DEFAULT 0,
+    discount_type TEXT DEFAULT 'regular',
+    vat_exempt INTEGER DEFAULT 0,
     cash_tendered REAL,
     change_given REAL,
     payment_method TEXT DEFAULT 'cash',
@@ -36,6 +40,22 @@ CREATE TABLE IF NOT EXISTS transactions (
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (served_by) REFERENCES users(id)
+);
+
+-- Void audit log — preserves record of all voided transactions (RA 9178 / BIR compliance)
+CREATE TABLE IF NOT EXISTS void_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    transaction_id INTEGER NOT NULL,
+    order_number TEXT NOT NULL,
+    total REAL NOT NULL,
+    discount REAL DEFAULT 0,
+    tax_amount REAL DEFAULT 0,
+    discount_type TEXT DEFAULT 'regular',
+    payment_method TEXT,
+    voided_by INTEGER,
+    voided_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reason TEXT,
+    FOREIGN KEY (voided_by) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS transaction_items (

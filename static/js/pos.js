@@ -8,7 +8,64 @@ const State = {
   currency: '₱',
   numpadValue: '',
   discountVisible: false,
+  discountType: 'regular',  // 'regular' | 'senior_citizen' | 'pwd'
 };
+
+// ── Tax helpers ────────────────────────────────────────────
+
+function getTaxSettings() {
+  const m = document.getElementById('tax-meta');
+  if (!m) return { enabled: false, rate: 12, inclusive: true };
+  return {
+    enabled:   m.dataset.taxEnabled === '1',
+    rate:      parseFloat(m.dataset.taxRate) || 12,
+    inclusive: m.dataset.taxInclusive === '1',
+  };
+}
+
+function computeTotals() {
+  const tax  = getTaxSettings();
+  const raw  = State.cart.reduce((s, i) => s + i.unit_price * i.quantity, 0);
+  const type = State.discountType;
+
+  if (type === 'senior_citizen' || type === 'pwd') {
+    // RA 9994 / RA 10754: remove VAT → apply 20% mandatory discount → VAT-exempt
+    const netOfVat = (tax.enabled && tax.inclusive && tax.rate > 0)
+      ? raw / (1 + tax.rate / 100)
+      : raw;
+    const total = netOfVat * 0.80;
+    return {
+      subtotal:  raw,
+      discount:  raw - total,
+      vat:       0,
+      vatExempt: true,
+      total:     total,
+    };
+  }
+
+  // Regular customer
+  const manualDisc = getDiscount();
+  const afterDisc  = Math.max(0, raw - manualDisc);
+  let vat = 0;
+  let total = afterDisc;
+
+  if (tax.enabled && tax.rate > 0) {
+    if (tax.inclusive) {
+      vat = afterDisc * (tax.rate / (100 + tax.rate));
+    } else {
+      vat   = afterDisc * (tax.rate / 100);
+      total = afterDisc + vat;
+    }
+  }
+
+  return {
+    subtotal:  raw,
+    discount:  manualDisc,
+    vat:       vat,
+    vatExempt: false,
+    total:     total,
+  };
+}
 
 // ── Cart operations ────────────────────────────────────────
 
@@ -57,9 +114,7 @@ function clearCart() {
 }
 
 function getCartTotal() {
-  const subtotal = State.cart.reduce((s, i) => s + i.unit_price * i.quantity, 0);
-  const discount = getDiscount();
-  return Math.max(0, subtotal - discount);
+  return computeTotals().total;
 }
 
 function getCartSubtotal() {
@@ -86,26 +141,49 @@ function renderCart() {
   const checkoutBtn = document.getElementById('btn-checkout');
   const checkoutTot = document.getElementById('checkout-total');
 
-  const count    = getCartItemCount();
-  const subtotal = getCartSubtotal();
-  const discount = getDiscount();
-  const total    = Math.max(0, subtotal - discount);
+  const count   = getCartItemCount();
+  const totals  = computeTotals();
+  const tax     = getTaxSettings();
 
-  countBadge.textContent   = count;
-  subtotalEl.textContent   = fmt(subtotal);
-  // Also update tablet drawer toggle count
+  countBadge.textContent = count;
+  subtotalEl.textContent = fmt(totals.subtotal);
   const tabCount = document.getElementById('cart-tab-count');
   if (tabCount) tabCount.textContent = count;
-  totalEl.textContent      = fmt(total);
-  if (checkoutTot) checkoutTot.textContent = fmt(total);
+  totalEl.textContent    = fmt(totals.total);
+  if (checkoutTot) checkoutTot.textContent = fmt(totals.total);
   validateCheckout();
 
+  // VAT row
+  const vatRow      = document.getElementById('vat-display-row');
+  const vatExemRow  = document.getElementById('vat-exempt-row');
+  const vatEl       = document.getElementById('cart-vat');
+  const vatLbl      = document.getElementById('vat-label');
+  if (tax.enabled && State.cart.length > 0) {
+    if (totals.vatExempt) {
+      if (vatRow)     vatRow.style.display    = 'none';
+      if (vatExemRow) vatExemRow.style.display = '';
+    } else {
+      if (vatRow)     { vatRow.style.display = ''; }
+      if (vatExemRow) vatExemRow.style.display = 'none';
+      if (vatEl)      vatEl.textContent = fmt(totals.vat);
+      if (vatLbl)     vatLbl.textContent = `VAT (${tax.rate}%) Included`;
+    }
+  } else {
+    if (vatRow)     vatRow.style.display     = 'none';
+    if (vatExemRow) vatExemRow.style.display = 'none';
+  }
+
   // Discount display
-  const discRow = document.getElementById('discount-display-row');
+  const discRow  = document.getElementById('discount-display-row');
   const discDisp = document.getElementById('cart-discount-display');
-  if (discount > 0 && discRow) {
+  const discLbl  = document.getElementById('discount-label');
+  if (totals.discount > 0 && discRow) {
     discRow.style.display = '';
-    discDisp.textContent  = `-${fmt(discount)}`;
+    discDisp.textContent  = `-${fmt(totals.discount)}`;
+    if (discLbl) {
+      discLbl.textContent = (State.discountType === 'senior_citizen' || State.discountType === 'pwd')
+        ? 'SC/PWD Discount' : 'Discount';
+    }
   } else if (discRow) {
     discRow.style.display = 'none';
   }
@@ -236,6 +314,8 @@ function validateCheckout() {
 // ── Discount toggle ────────────────────────────────────────
 
 function toggleDiscount() {
+  // SC/PWD discount overrides manual discount — block manual entry
+  if (State.discountType !== 'regular') return;
   State.discountVisible = !State.discountVisible;
   const row = document.getElementById('cart-discount-row');
   if (row) row.style.display = State.discountVisible ? 'flex' : 'none';
@@ -249,6 +329,28 @@ function toggleDiscount() {
     if (inp) inp.value = '0';
     renderCart();
   }
+}
+
+function onDiscountTypeChange(type) {
+  State.discountType = type;
+  const notice = document.getElementById('sc-pwd-notice');
+  const discRow = document.getElementById('cart-discount-row');
+  const discBtn = document.getElementById('btn-discount');
+  const isSCPWD = (type === 'senior_citizen' || type === 'pwd');
+
+  // Hide manual discount for SC/PWD — their discount is automatically computed
+  if (isSCPWD) {
+    if (discRow) discRow.style.display = 'none';
+    if (discBtn) { discBtn.disabled = true; discBtn.style.opacity = '.4'; }
+    State.discountVisible = false;
+    const inp = document.getElementById('discount-input');
+    if (inp) inp.value = '0';
+  } else {
+    if (discBtn) { discBtn.disabled = false; discBtn.style.opacity = ''; }
+  }
+
+  if (notice) notice.style.display = isSCPWD ? '' : 'none';
+  renderCart();
 }
 
 // ── Product filtering ──────────────────────────────────────
@@ -328,6 +430,7 @@ async function checkout() {
         cash_tendered:  cashTendered,
         discount:       getDiscount(),
         gcash_ref:      gcashRef,
+        discount_type:  State.discountType,
       }),
     });
 
@@ -354,18 +457,59 @@ function showReceipt(data) {
   const modal = document.getElementById('receipt-modal-backdrop');
   if (!modal) return;
 
+  // Subtotal = total before discount (what items totalled at full price)
+  const rawSubtotal = data.total + (data.discount || 0);
   document.getElementById('receipt-order-num').textContent = data.order_number;
-  document.getElementById('receipt-subtotal').textContent  = fmt(data.total + (data.discount || 0));
+  document.getElementById('receipt-subtotal').textContent  = fmt(rawSubtotal);
   document.getElementById('receipt-total').textContent     = fmt(data.total);
+
+  // Discount type label (SC/PWD badge)
+  const discTypeLbl = document.getElementById('receipt-discount-type-label');
+  if (discTypeLbl) {
+    if (data.discount_type === 'senior_citizen') {
+      discTypeLbl.textContent = 'Senior Citizen Discount — RA 9994';
+      discTypeLbl.style.display = '';
+    } else if (data.discount_type === 'pwd') {
+      discTypeLbl.textContent = 'PWD Discount — RA 10754';
+      discTypeLbl.style.display = '';
+    } else {
+      discTypeLbl.style.display = 'none';
+    }
+  }
 
   // Discount row
   const discRow = document.getElementById('receipt-discount-row');
   const discEl  = document.getElementById('receipt-discount');
+  const discLbl = document.getElementById('receipt-discount-label');
   if (data.discount && data.discount > 0) {
     discRow.style.display = '';
     discEl.textContent    = `-${fmt(data.discount)}`;
+    if (discLbl) {
+      discLbl.textContent = (data.discount_type === 'senior_citizen' || data.discount_type === 'pwd')
+        ? 'SC/PWD Discount' : 'Discount';
+    }
   } else {
     discRow.style.display = 'none';
+  }
+
+  // VAT row
+  const vatRow     = document.getElementById('receipt-vat-row');
+  const vatExemRow = document.getElementById('receipt-vat-exempt-row');
+  const vatAmtEl   = document.getElementById('receipt-vat-amount');
+  const vatLblEl   = document.getElementById('receipt-vat-label');
+  if (vatRow && vatExemRow) {
+    if (data.vat_exempt) {
+      vatRow.style.display     = 'none';
+      vatExemRow.style.display = '';
+    } else if (data.tax_amount && data.tax_amount > 0) {
+      vatRow.style.display     = '';
+      vatExemRow.style.display = 'none';
+      if (vatAmtEl) vatAmtEl.textContent = fmt(data.tax_amount);
+      if (vatLblEl) vatLblEl.textContent = `VAT (${data.tax_rate}%) Included`;
+    } else {
+      vatRow.style.display     = 'none';
+      vatExemRow.style.display = 'none';
+    }
   }
 
   // Items
@@ -409,11 +553,15 @@ function closeReceipt() {
 function newOrder() {
   closeReceipt();
   clearCart();
-  State.numpadValue = '';
+  State.numpadValue  = '';
+  State.discountType = 'regular';
   const cashInput  = document.getElementById('cash-tendered');
   if (cashInput) cashInput.value = '';
   const gcashInput = document.getElementById('gcash-ref-input');
   if (gcashInput) { gcashInput.value = ''; gcashInput.classList.remove('valid','invalid'); }
+  // Reset discount type selector
+  const discTypeSel = document.getElementById('discount-type-select');
+  if (discTypeSel) { discTypeSel.value = 'regular'; onDiscountTypeChange('regular'); }
   // Reset to cash payment
   selectPaymentMethod('cash');
   // Hide discount
