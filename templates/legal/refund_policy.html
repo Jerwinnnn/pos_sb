@@ -1,0 +1,46 @@
+{% extends "legal/base_partial.html" if partial else "legal/base_legal.html" %}
+{% block title %}Refund Policy{% endblock %}
+{% block breadcrumb %}Refund Policy{% endblock %}
+{% block heading %}Refund &amp; Returns Policy{% endblock %}
+{% block meta %}Effective date: September 13, 2026{% endblock %}
+
+{% block content %}
+<div class="legal-highlight">
+  Customer satisfaction is important to us. This policy outlines when refunds, replacements, or order adjustments may be offered, and how staff should handle such requests.
+</div>
+
+<h2>1. Food Quality Issues</h2>
+<p>If a customer receives an order that is incorrect, incomplete, or of unacceptable quality, the following applies:</p>
+<ul>
+  <li><strong>Wrong order</strong> — The incorrect item will be replaced at no charge. The customer is not required to return the wrong item.</li>
+  <li><strong>Missing item</strong> — The missing item will be prepared and served as soon as possible.</li>
+  <li><strong>Quality complaint</strong> — A replacement will be offered at the discretion of the manager on duty. If a replacement is not possible, a refund for the affected item may be issued.</li>
+</ul>
+
+<h2>2. Order Cancellations</h2>
+<p>Orders that have already been prepared and plated <strong>cannot be cancelled</strong> unless there is a quality issue as described above. Orders placed in error should be reported to the cashier immediately — before the order is sent to the kitchen — to be corrected or cancelled without charge.</p>
+
+<h2>3. Refund Process</h2>
+<p>Refunds are only issued when a replacement cannot be provided. The process is as follows:</p>
+<ol>
+  <li>The cashier refers the issue to the manager on duty.</li>
+  <li>The manager approves the refund and initiates a void transaction in the POS system.</li>
+  <li>Cash refunds are given for cash payments. Card and GCash refunds are processed through the original payment method (processing time may vary).</li>
+  <li>A void receipt is issued as confirmation.</li>
+</ol>
+<p>Only staff with <strong>superadmin access</strong> can process voids in the POS system. Cashiers must not attempt to issue refunds without manager approval.</p>
+
+<h2>4. Non-Refundable Items</h2>
+<p>The following are not eligible for refunds or replacements:</p>
+<ul>
+  <li>Fully consumed orders where the complaint is raised after the meal is finished</li>
+  <li>Orders modified by the customer after preparation (e.g., added sauces, customisations)</li>
+  <li>Promotional or bundled items where the individual item was consumed</li>
+</ul>
+
+<h2>5. Customer Allergies and Dietary Requirements</h2>
+<p>Staff are responsible for communicating known allergens in menu items when asked. If a customer is served an item containing an allergen they notified us about and a reaction occurs, the manager on duty must be informed immediately. In such cases, a full refund is provided without question.</p>
+
+<h2>6. Contact</h2>
+<p>For refund concerns beyond what the cashier can handle, please speak to the manager on duty. For unresolved complaints, the store owner may be contacted through the store's official contact details.</p>
+{% endblock %}

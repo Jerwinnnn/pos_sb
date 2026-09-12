@@ -16,7 +16,7 @@
     <span class="table-card-title">Staff ({{ users | length }})</span>
     <div class="table-search">
       <span>🔍</span>
-      <input type="text" id="search-users" placeholder="Search users…">
+      <input type="text" id="search-users" placeholder="Search users…" aria-label="Search users">
     </div>
   </div>
   <div class="table-wrap">
@@ -71,27 +71,27 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">Add User</span>
-      <button class="modal-close" onclick="closeModal('modal-add-user')">✕</button>
+      <button class="modal-close" onclick="closeModal('modal-add-user')" aria-label="Close dialog">✕</button>
     </div>
     <form method="POST" action="{{ url_for('add_user_route') }}">
       <div class="form-row">
         <div class="form-group">
-          <label>Full Name *</label>
-          <input type="text" name="full_name" class="form-control" placeholder="e.g. Juan dela Cruz" required>
+          <label for="add-full-name">Full Name *</label>
+          <input type="text" id="add-full-name" name="full_name" class="form-control" placeholder="e.g. Juan dela Cruz" required>
         </div>
         <div class="form-group">
-          <label>Username *</label>
-          <input type="text" name="username" class="form-control" placeholder="e.g. juan123" required>
+          <label for="add-username">Username *</label>
+          <input type="text" id="add-username" name="username" class="form-control" placeholder="e.g. juan123" required autocomplete="username">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Password *</label>
-          <input type="password" name="password" class="form-control" required>
+          <label for="add-password">Password *</label>
+          <input type="password" id="add-password" name="password" class="form-control" required autocomplete="new-password">
         </div>
         <div class="form-group">
-          <label>Role</label>
-          <select name="role" class="form-control">
+          <label for="add-role">Role</label>
+          <select id="add-role" name="role" class="form-control">
             <option value="cashier">Cashier</option>
             <option value="superadmin">Superadmin</option>
           </select>
@@ -110,32 +110,32 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">Edit User</span>
-      <button class="modal-close" onclick="closeModal('modal-edit-user')">✕</button>
+      <button class="modal-close" onclick="closeModal('modal-edit-user')" aria-label="Close dialog">✕</button>
     </div>
     <form method="POST" action="/users/edit/0">
       <div class="form-group">
-        <label>Full Name *</label>
-        <input type="text" name="full_name" class="form-control" required>
+        <label for="edit-full-name">Full Name *</label>
+        <input type="text" id="edit-full-name" name="full_name" class="form-control" required>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Role</label>
-          <select name="role" class="form-control">
+          <label for="edit-role">Role</label>
+          <select id="edit-role" name="role" class="form-control">
             <option value="cashier">Cashier</option>
             <option value="superadmin">Superadmin</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Status</label>
-          <select name="is_active" class="form-control">
+          <label for="edit-status">Status</label>
+          <select id="edit-status" name="is_active" class="form-control">
             <option value="1">Active</option>
             <option value="0">Inactive</option>
           </select>
         </div>
       </div>
       <div class="form-group">
-        <label>New Password <span style="color:var(--muted); font-weight:400;">(leave blank to keep)</span></label>
-        <input type="password" name="password" class="form-control" placeholder="Leave blank to keep current">
+        <label for="edit-password">New Password <span style="color:var(--text-dark-3); font-weight:400;">(leave blank to keep)</span></label>
+        <input type="password" id="edit-password" name="password" class="form-control" placeholder="Leave blank to keep current" autocomplete="new-password">
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-edit-user')">Cancel</button>

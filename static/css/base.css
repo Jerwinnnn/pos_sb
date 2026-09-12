@@ -35,7 +35,7 @@
   /* Text on light */
   --text-dark: #1a1c22;
   --text-dark-2: #4a4f5c;
-  --text-dark-3: #8a8f9c;
+  --text-dark-3: #62687a; /* darkened from #8a8f9c for WCAG AA 4.5:1 on white */
 
   /* Text on dark */
   --text-light: #f0f2f8;
@@ -127,22 +127,22 @@ a:hover {
 .alert-success {
   background: var(--success-dim);
   border: 1px solid rgba(34, 197, 94, 0.25);
-  color: var(--success-text);
+  color: #166534; /* ~7:1 on light background — WCAG AA */
 }
 .alert-error {
   background: var(--danger-dim);
   border: 1px solid rgba(239, 68, 68, 0.25);
-  color: var(--danger-text);
+  color: #991b1b; /* ~7.7:1 on light background — WCAG AA */
 }
 .alert-warning {
   background: var(--warning-dim);
   border: 1px solid rgba(245, 158, 11, 0.25);
-  color: var(--warning);
+  color: #92400e; /* ~7.2:1 on light background — WCAG AA */
 }
 .alert-info {
   background: var(--info-dim);
   border: 1px solid rgba(59, 130, 246, 0.25);
-  color: var(--info-text);
+  color: #1e40af; /* ~8.5:1 on light background — WCAG AA */
 }
 
 /* ── Badges ── */
@@ -158,31 +158,31 @@ a:hover {
 }
 .badge-superadmin {
   background: var(--brand-dim);
-  color: var(--brand);
+  color: #9a1b10; /* darkened brand for WCAG AA on dim background */
 }
 .badge-cashier {
   background: var(--success-dim);
-  color: var(--success-text);
+  color: #166534; /* ~7:1 on light background — WCAG AA */
 }
 .badge-active {
   background: var(--success-dim);
-  color: var(--success-text);
+  color: #166534;
 }
 .badge-inactive {
   background: var(--danger-dim);
-  color: var(--danger-text);
+  color: #991b1b; /* ~7.7:1 on light background — WCAG AA */
 }
 .badge-cash {
   background: var(--gold-dim);
-  color: var(--gold);
+  color: #78350f; /* ~8.5:1 on light background — WCAG AA */
 }
 .badge-card {
   background: var(--info-dim);
-  color: var(--info-text);
+  color: #1e40af; /* ~8.5:1 on light background — WCAG AA */
 }
 .badge-gcash {
   background: rgba(0, 117, 230, 0.1);
-  color: #0075e6;
+  color: #00429c; /* ~8.8:1 on light background — WCAG AA */
 }
 
 /* ── Buttons ── */

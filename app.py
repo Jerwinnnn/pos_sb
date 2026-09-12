@@ -546,6 +546,34 @@ def save_settings_route():
     flash('Settings saved! Refresh the page to see changes.', 'success')
     return redirect(url_for('settings_page'))
 
+# ── Legal / Policy pages ─────────────────────────────────
+
+@app.route('/privacy-policy')
+def privacy_policy():
+    partial = request.args.get('partial') == '1'
+    return render_template('legal/privacy_policy.html', partial=partial)
+
+@app.route('/terms')
+def terms():
+    partial = request.args.get('partial') == '1'
+    return render_template('legal/terms.html', partial=partial)
+
+@app.route('/cookie-policy')
+def cookie_policy():
+    partial = request.args.get('partial') == '1'
+    return render_template('legal/cookie_policy.html', partial=partial)
+
+@app.route('/refund-policy')
+def refund_policy():
+    partial = request.args.get('partial') == '1'
+    return render_template('legal/refund_policy.html', partial=partial)
+
+@app.route('/cookie-consent', methods=['POST'])
+def cookie_consent():
+    """Mark cookie notice as acknowledged (stores flag in session)."""
+    session['cookie_consent'] = True
+    return ('', 204)
+
 # ── Errors ────────────────────────────────────────────────
 
 @app.errorhandler(403)

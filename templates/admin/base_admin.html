@@ -19,7 +19,7 @@
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="sidebar-brand-icon">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" aria-hidden="true" focusable="false">
           <path d="M4 9C4 6.79 7.58 5 12 5s8 1.79 8 4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
           <rect x="4" y="9" width="16" height="2.5" rx="1" fill="#fff" opacity=".4"/>
           <rect x="4" y="11.5" width="16" height="3" rx="1" fill="#fff" opacity=".8"/>
@@ -80,6 +80,12 @@
       </div>
       {% endif %}
       <a href="{{ url_for('logout') }}" class="btn-logout">Sign Out</a>
+      <div style="display:flex;flex-wrap:wrap;gap:.25rem .75rem;margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(255,255,255,.08)">
+        <a href="#" onclick="openPolicyModal('{{ url_for('privacy_policy') }}','Privacy Policy');return false" style="font-size:.6875rem;color:rgba(155,163,184,.6);text-decoration:none" onmouseover="this.style.color='rgba(155,163,184,1)'" onmouseout="this.style.color='rgba(155,163,184,.6)'">Privacy</a>
+        <a href="#" onclick="openPolicyModal('{{ url_for('terms') }}','Terms &amp; Conditions');return false" style="font-size:.6875rem;color:rgba(155,163,184,.6);text-decoration:none" onmouseover="this.style.color='rgba(155,163,184,1)'" onmouseout="this.style.color='rgba(155,163,184,.6)'">Terms</a>
+        <a href="#" onclick="openPolicyModal('{{ url_for('cookie_policy') }}','Cookie Policy');return false" style="font-size:.6875rem;color:rgba(155,163,184,.6);text-decoration:none" onmouseover="this.style.color='rgba(155,163,184,1)'" onmouseout="this.style.color='rgba(155,163,184,.6)'">Cookies</a>
+        <a href="#" onclick="openPolicyModal('{{ url_for('refund_policy') }}','Refund Policy');return false" style="font-size:.6875rem;color:rgba(155,163,184,.6);text-decoration:none" onmouseover="this.style.color='rgba(155,163,184,1)'" onmouseout="this.style.color='rgba(155,163,184,.6)'">Refunds</a>
+      </div>
     </div>
   </aside>
 
@@ -105,6 +111,7 @@
 
 </div>
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+<script src="{{ url_for('static', filename='js/policy_modal.js') }}"></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

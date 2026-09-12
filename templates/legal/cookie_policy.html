@@ -1,0 +1,62 @@
+{% extends "legal/base_partial.html" if partial else "legal/base_legal.html" %}
+{% block title %}Cookie Policy{% endblock %}
+{% block breadcrumb %}Cookie Policy{% endblock %}
+{% block heading %}Cookie Policy{% endblock %}
+{% block meta %}Effective date: September 13, 2026{% endblock %}
+
+{% block content %}
+<div class="legal-highlight">
+  This system uses a small number of cookies and makes limited third-party requests. No advertising or tracking cookies are used.
+</div>
+
+<h2>1. What Are Cookies?</h2>
+<p>Cookies are small text files stored in your browser. They are used to keep you logged in and remember lightweight preferences during your session.</p>
+
+<h2>2. Cookies We Use</h2>
+<h3>Session Cookie (Essential)</h3>
+<p>When you sign in, the system sets a <strong>session cookie</strong> that keeps you authenticated while the browser is open. This cookie is essential for the system to function — without it, you cannot stay logged in. It is a first-party, session-only cookie that is deleted when you close the browser or sign out. No consent is required for essential session cookies.</p>
+
+<table style="width:100%;border-collapse:collapse;font-size:.875rem;margin-bottom:1rem">
+  <thead>
+    <tr style="border-bottom:2px solid var(--menu-border)">
+      <th style="text-align:left;padding:.5rem .75rem;color:var(--text-dark)">Name</th>
+      <th style="text-align:left;padding:.5rem .75rem;color:var(--text-dark)">Purpose</th>
+      <th style="text-align:left;padding:.5rem .75rem;color:var(--text-dark)">Type</th>
+      <th style="text-align:left;padding:.5rem .75rem;color:var(--text-dark)">Duration</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid var(--menu-border)">
+      <td style="padding:.5rem .75rem;color:var(--text-dark-2);font-family:monospace">session</td>
+      <td style="padding:.5rem .75rem;color:var(--text-dark-2)">Keeps you logged in</td>
+      <td style="padding:.5rem .75rem;color:var(--text-dark-2)">Essential / First-party</td>
+      <td style="padding:.5rem .75rem;color:var(--text-dark-2)">Session (cleared on close or sign-out)</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--menu-border)">
+      <td style="padding:.5rem .75rem;color:var(--text-dark-2);font-family:monospace">cookie_consent</td>
+      <td style="padding:.5rem .75rem;color:var(--text-dark-2)">Remembers that you acknowledged this notice</td>
+      <td style="padding:.5rem .75rem;color:var(--text-dark-2)">Functional / First-party</td>
+      <td style="padding:.5rem .75rem;color:var(--text-dark-2)">Session (stored in server-side session)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>3. Third-Party Requests</h2>
+<h3>Google Fonts</h3>
+<p>This system loads fonts from <strong>Google Fonts</strong> (fonts.googleapis.com / fonts.gstatic.com). When your browser loads a page, it makes a request to Google's servers to download the font files. Google may log your IP address as part of this request. This is a one-time request per session for display purposes only. No advertising profile is created from it. You can review Google's privacy practices at <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">policies.google.com/privacy</a>.</p>
+
+<h3>Chart.js (jsDelivr CDN)</h3>
+<p>The sales reports page loads <strong>Chart.js</strong> from the jsDelivr CDN (cdn.jsdelivr.net). This is a standard content-delivery network request with no user tracking involved. jsDelivr's privacy policy is available at <a href="https://www.jsdelivr.com/privacy-policy-jsdelivr-net" target="_blank" rel="noopener noreferrer">jsdelivr.com</a>.</p>
+
+<h2>4. No Tracking or Analytics</h2>
+<p>This system does <strong>not</strong> use Google Analytics, Facebook Pixel, or any other analytics, advertising, or behavioural tracking tools. No data about your activity within this system is sent to third parties beyond what is described in Section 3.</p>
+
+<h2>5. No Third-Party Embeds</h2>
+<p>This system does not embed content from social media platforms, payment gateways, or advertising networks. All third-party resource requests are limited to the font and charting libraries described above.</p>
+
+<h2>6. Managing Cookies</h2>
+<p>You can view, block, or delete cookies through your browser's settings at any time. Clearing the session cookie will sign you out. All major browsers (Chrome, Firefox, Edge, Safari) provide cookie management options in their Settings or Privacy menus.</p>
+
+<h2>7. Contact</h2>
+<p>For questions about this policy, contact the system administrator at <strong>{{ app_name }}</strong>.</p>
+{% endblock %}

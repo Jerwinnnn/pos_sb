@@ -1,0 +1,69 @@
+{% extends "legal/base_partial.html" if partial else "legal/base_legal.html" %}
+{% block title %}Privacy Policy{% endblock %}
+{% block breadcrumb %}Privacy Policy{% endblock %}
+{% block heading %}Privacy Policy{% endblock %}
+{% block meta %}Effective date: September 13, 2026 &nbsp;·&nbsp; Last updated: September 13, 2026{% endblock %}
+
+{% block content %}
+<div class="legal-highlight">
+  This system is an internal Point-of-Sale tool used only by authorised staff of <strong>{{ app_name }}</strong>. It is not a public-facing website. This policy explains what data is processed, how it is stored, and your rights as a user of this system.
+</div>
+
+<h2>1. Who We Are</h2>
+<p><strong>{{ app_name }}</strong> ("we", "the Store") operates this POS system and is responsible for the personal data processed through it. For any data privacy concerns, contact the system administrator.</p>
+
+<h2>2. What Data We Collect</h2>
+<h3>Staff Accounts</h3>
+<ul>
+  <li>Full name and username</li>
+  <li>Hashed password (the original password is never stored or readable)</li>
+  <li>Role (cashier or administrator)</li>
+  <li>Last login timestamp</li>
+</ul>
+<h3>Shift Records</h3>
+<ul>
+  <li>Clock-in and clock-out times</li>
+  <li>Opening and closing cash amounts entered by the staff member</li>
+  <li>Optional shift notes</li>
+</ul>
+<h3>Transactions</h3>
+<ul>
+  <li>Order items, quantities, prices, and totals</li>
+  <li>Payment method (e.g. Cash, Card, or digital payment)</li>
+  <li>Any payment reference number entered by the cashier</li>
+  <li>Name of the staff member who processed the sale</li>
+  <li>Transaction timestamp</li>
+</ul>
+<h3>What We Do Not Collect</h3>
+<p>This system does <strong>not</strong> collect customer names, customer contact details, biometric data, government-issued IDs, or any other personal information from customers. Receipts show only the order total and payment method.</p>
+
+<h2>3. How We Use the Data</h2>
+<ul>
+  <li>Authenticating staff logins and managing system access</li>
+  <li>Recording shift attendance and cash reconciliation</li>
+  <li>Generating sales reports and end-of-day summaries</li>
+  <li>Maintaining a transaction audit trail for accountability</li>
+</ul>
+
+<h2>4. Third-Party Services</h2>
+<p>This system loads fonts from <strong>Google Fonts</strong> (fonts.googleapis.com). This causes your browser to make a request to Google's servers, which may log your IP address. No other third-party tracking, analytics, or advertising services are used. For details, see our <a href="{{ url_for('cookie_policy') }}">Cookie Policy</a>.</p>
+
+<h2>5. Data Storage and Security</h2>
+<p>All data is stored in a local database on the store's server. The system is not connected to external databases or cloud storage. Access is protected by username/password authentication with role-based access control.</p>
+
+<h2>6. Data Retention</h2>
+<p>Transaction records and shift logs are kept indefinitely for accounting and audit purposes. Staff accounts can be deactivated or deleted by an administrator at any time. Deactivated accounts retain their historical records for audit purposes but cannot log in.</p>
+
+<h2>7. Your Rights</h2>
+<p>As a staff member using this system, you have the right to:</p>
+<ul>
+  <li><strong>Access</strong> — request a copy of your personal data held in this system</li>
+  <li><strong>Rectification</strong> — request correction of inaccurate data</li>
+  <li><strong>Erasure</strong> — request deletion of your account when it is no longer needed</li>
+  <li><strong>Object</strong> — raise concerns about how your data is being processed</li>
+</ul>
+<p>To exercise these rights, contact the system administrator.</p>
+
+<h2>8. Changes to This Policy</h2>
+<p>We may update this policy to reflect changes in the system. The effective date at the top of this page will be updated accordingly. Continued use of the system after changes are posted constitutes acceptance of the revised policy.</p>
+{% endblock %}

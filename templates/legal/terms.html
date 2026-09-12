@@ -1,0 +1,52 @@
+{% extends "legal/base_partial.html" if partial else "legal/base_legal.html" %}
+{% block title %}Terms &amp; Conditions{% endblock %}
+{% block breadcrumb %}Terms &amp; Conditions{% endblock %}
+{% block heading %}Terms &amp; Conditions of Use{% endblock %}
+{% block meta %}Effective date: September 13, 2026{% endblock %}
+
+{% block content %}
+<div class="legal-highlight">
+  By logging into and using the <strong>{{ app_name }} POS System</strong>, you agree to the following terms. These terms apply to all staff members with access to this system.
+</div>
+
+<h2>1. Authorised Use</h2>
+<p>This system is provided exclusively for use by <strong>authorised employees of {{ app_name }}</strong>. Access is granted by an administrator and may be revoked at any time. You must not share your login credentials with any other person.</p>
+
+<h2>2. Staff Responsibilities</h2>
+<ul>
+  <li>You are responsible for all actions taken under your account.</li>
+  <li>You must keep your password secure and not disclose it to others.</li>
+  <li>You must report any suspected unauthorised access to an administrator immediately.</li>
+  <li>You must accurately record opening and closing cash amounts at the start and end of each shift.</li>
+  <li>You must only process legitimate transactions and must not void transactions without proper authorisation.</li>
+</ul>
+
+<h2>3. Cash Handling</h2>
+<p>Discrepancies between the system's expected cash totals and the physical cash in the drawer must be reported immediately to an administrator. Shortages may be subject to internal review procedures in accordance with store policy.</p>
+
+<h2>4. Prohibited Actions</h2>
+<p>The following are strictly prohibited:</p>
+<ul>
+  <li>Processing fictitious or fraudulent transactions</li>
+  <li>Voiding transactions without proper authorisation</li>
+  <li>Applying unauthorised discounts</li>
+  <li>Accessing another staff member's account</li>
+  <li>Attempting to modify, copy, or reverse-engineer any part of this system</li>
+  <li>Exporting or sharing transaction data with unauthorised third parties</li>
+</ul>
+
+<h2>5. System Availability</h2>
+<p>The system is provided on an "as is" basis. The Store makes no guarantee that the system will be available at all times or free from errors. In the event of a system outage, follow the manual backup procedures established by management.</p>
+
+<h2>6. Data and Audit Trails</h2>
+<p>All transactions, voids, logins, and shift events are recorded and retained. These records may be reviewed by management at any time for operational, audit, or disciplinary purposes.</p>
+
+<h2>7. Disciplinary Action</h2>
+<p>Violations of these terms may result in suspension or termination of system access, and may be subject to further disciplinary action under the Store's internal policies and applicable employment law.</p>
+
+<h2>8. Changes to These Terms</h2>
+<p>These terms may be updated at the discretion of management. Continued use of the system after changes are posted constitutes acceptance of the revised terms.</p>
+
+<h2>9. Governing Law</h2>
+<p>These terms are governed by the laws applicable in the jurisdiction where <strong>{{ app_name }}</strong> operates.</p>
+{% endblock %}
