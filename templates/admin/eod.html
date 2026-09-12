@@ -1,0 +1,399 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ 'Monthly Report' if mode == 'monthly' else 'End of Day' }}{% endblock %}
+{% block page_title %}{{ 'Monthly Report' if mode == 'monthly' else 'End of Day' }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Print styles ── */
+@media print {
+  .sidebar, .topbar, .no-print { display: none !important; }
+  .main-content { margin-left: 0 !important; }
+  .page-content { padding: 0 !important; }
+  .report-card { box-shadow: none !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
+  .report-section { page-break-inside: avoid; }
+}
+
+/* ── Mode toggle tabs ── */
+.mode-tabs {
+  display: flex; gap: .375rem;
+  background: var(--menu-bg);
+  border: 1.5px solid var(--menu-border);
+  border-radius: var(--r-md);
+  padding: .25rem;
+}
+.mode-tab {
+  padding: .4rem 1rem; border-radius: var(--r-sm);
+  font-size: .8125rem; font-weight: 700;
+  border: none; background: transparent;
+  color: var(--text-dark-2); cursor: pointer;
+  text-decoration: none; transition: all var(--tx-fast);
+  white-space: nowrap;
+}
+.mode-tab.active {
+  background: #fff; color: var(--text-dark);
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+
+/* ── Month picker ── */
+.month-picker {
+  display: flex; align-items: center; gap: .5rem;
+  background: #fff; border: 1.5px solid var(--menu-border);
+  border-radius: var(--r); padding: .3rem .3rem .3rem .75rem;
+}
+.month-picker select {
+  border: none; outline: none; background: transparent;
+  font-family: var(--font); font-size: .8125rem; font-weight: 700;
+  color: var(--text-dark); cursor: pointer;
+}
+
+/* ── Report card ── */
+.report-card {
+  background: #fff; border: 1.5px solid var(--menu-border);
+  border-radius: var(--r-lg); padding: 1.5rem;
+  box-shadow: var(--shadow); max-width: 720px; margin: 0 auto;
+}
+
+/* ── Report header ── */
+.rpt-header {
+  text-align: center; margin-bottom: 1.5rem;
+  padding-bottom: 1.25rem; border-bottom: 2px dashed var(--menu-border);
+}
+.rpt-brand-icon {
+  width: 52px; height: 52px; background: var(--brand);
+  border-radius: var(--r-md); display: flex; align-items: center;
+  justify-content: center; margin: 0 auto .75rem;
+  box-shadow: var(--shadow-brand);
+}
+.rpt-title    { font-size: 1.375rem; font-weight: 800; color: var(--text-dark); letter-spacing: -.03em; }
+.rpt-subtitle { font-size: .8125rem; color: var(--text-dark-3); margin-top: .25rem; }
+.rpt-period   { font-size: .75rem; font-weight: 700; color: var(--brand); margin-top: .25rem; }
+
+/* ── Stats grid ── */
+.rpt-stats {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  gap: .75rem; margin-bottom: 1.25rem;
+}
+.rpt-stat {
+  text-align: center; padding: .875rem;
+  background: var(--menu-bg); border-radius: var(--r-md);
+  border: 1.5px solid var(--menu-border);
+}
+.rpt-stat-label { font-size: .5625rem; font-weight: 800; color: var(--text-dark-3); text-transform: uppercase; letter-spacing: .1em; margin-bottom: .3rem; }
+.rpt-stat-value { font-size: 1.25rem; font-weight: 800; color: var(--text-dark); letter-spacing: -.03em; }
+.rpt-stat-value.red   { color: var(--brand); }
+.rpt-stat-value.green { color: var(--success); }
+.rpt-stat-value.blue  { color: var(--info); }
+
+/* ── Section title ── */
+.rpt-section-title {
+  font-size: .625rem; font-weight: 800; color: var(--text-dark-3);
+  text-transform: uppercase; letter-spacing: .1em; margin-bottom: .625rem;
+}
+.rpt-divider { border: none; border-top: 1.5px dashed var(--menu-border); margin: 1.125rem 0; }
+
+/* ── Transaction row (daily) ── */
+.rpt-tx-row {
+  display: grid; grid-template-columns: 1fr auto auto auto;
+  gap: 0 .75rem; padding: .4rem 0;
+  border-bottom: 1px solid var(--menu-border);
+  font-size: .8125rem; align-items: center;
+}
+.rpt-tx-row:last-child { border-bottom: none; }
+.rpt-tx-num    { color: var(--brand); font-weight: 700; font-size: .75rem; }
+.rpt-tx-amount { font-weight: 800; text-align: right; }
+
+/* ── Daily breakdown table (monthly) ── */
+.rpt-daily-table { width: 100%; border-collapse: collapse; font-size: .8125rem; }
+.rpt-daily-table th {
+  font-size: .5625rem; font-weight: 800; color: var(--text-dark-3);
+  text-transform: uppercase; letter-spacing: .09em;
+  padding: .4rem .625rem; background: var(--menu-bg);
+  border-bottom: 1.5px solid var(--menu-border); text-align: left;
+}
+.rpt-daily-table td {
+  padding: .5rem .625rem; border-bottom: 1px solid var(--menu-border);
+  vertical-align: middle;
+}
+.rpt-daily-table tr:last-child td { border-bottom: none; }
+.rpt-daily-table tr:hover td { background: #fff8f7; }
+.rpt-daily-table .day-bar {
+  height: 6px; border-radius: 99px; background: var(--menu-border); overflow: hidden;
+}
+.rpt-daily-table .day-bar-fill {
+  height: 100%; background: var(--brand); border-radius: 99px;
+}
+.rpt-daily-total {
+  display: flex; justify-content: space-between;
+  font-size: .9375rem; font-weight: 800; color: var(--text-dark);
+  padding: .625rem 0 0; border-top: 2px solid var(--text-dark); margin-top: .375rem;
+}
+.rpt-daily-total span:last-child { color: var(--brand); }
+
+/* ── Top items ── */
+.rpt-item-row {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .5rem 0; border-bottom: 1px solid var(--menu-border);
+  font-size: .8125rem;
+}
+.rpt-item-row:last-child { border-bottom: none; }
+.rpt-item-rank {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--menu-bg); border: 1.5px solid var(--menu-border);
+  font-size: .6875rem; font-weight: 800; color: var(--text-dark-3);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.rpt-item-rank.gold   { background: rgba(245,166,35,.15); border-color: rgba(245,166,35,.4); color: #b07d10; }
+.rpt-item-rank.silver { background: rgba(156,163,175,.15); border-color: rgba(156,163,175,.4); color: #6b7280; }
+.rpt-item-rank.bronze { background: rgba(180,83,9,.12); border-color: rgba(180,83,9,.3); color: #92400e; }
+.rpt-item-bar { flex: 1; }
+.rpt-item-name { font-weight: 700; color: var(--text-dark); }
+.rpt-item-qty  { font-size: .6875rem; color: var(--text-dark-3); margin-top: .1rem; }
+.rpt-item-rev  { font-weight: 800; color: var(--text-dark); text-align: right; white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Page header ── -->
+<div class="page-header no-print">
+  <div>
+    <h1>{{ 'Monthly Report' if mode == 'monthly' else 'End of Day Report' }}</h1>
+    <p style="color:var(--text-dark-3);font-size:.8125rem;margin-top:.2rem">{{ now }}</p>
+  </div>
+  <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+
+    <!-- Mode toggle -->
+    <div class="mode-tabs">
+      <a href="{{ url_for('eod', mode='daily') }}"
+         class="mode-tab {{ 'active' if mode == 'daily' }}">📋 Daily</a>
+      <a href="{{ url_for('eod', mode='monthly', year=year, month=month) }}"
+         class="mode-tab {{ 'active' if mode == 'monthly' }}">📅 Monthly</a>
+    </div>
+
+    <!-- Month picker (monthly mode only) -->
+    {% if mode == 'monthly' %}
+    <form method="GET" action="{{ url_for('eod') }}" style="display:contents">
+      <input type="hidden" name="mode" value="monthly">
+      <div class="month-picker">
+        <span style="font-size:.75rem;font-weight:700;color:var(--text-dark-3)">Month:</span>
+        <select name="month" onchange="this.form.submit()">
+          {% for m, mn in [(1,'January'),(2,'February'),(3,'March'),(4,'April'),
+                           (5,'May'),(6,'June'),(7,'July'),(8,'August'),
+                           (9,'September'),(10,'October'),(11,'November'),(12,'December')] %}
+          <option value="{{ m }}" {{ 'selected' if m == month }}>{{ mn }}</option>
+          {% endfor %}
+        </select>
+        <select name="year" onchange="this.form.submit()">
+          {% for y in range(2024, 2028) %}
+          <option value="{{ y }}" {{ 'selected' if y == year }}>{{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+    {% endif %}
+
+    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost btn-sm">← Dashboard</a>
+    <button onclick="window.print()" class="btn btn-primary btn-sm">🖨 Print</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     DAILY MODE
+════════════════════════════════ -->
+{% if mode == 'daily' %}
+<div class="report-card">
+  <div class="rpt-header">
+    <div class="rpt-brand-icon">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="26" height="26">
+        <path d="M4 9C4 6.79 7.58 5 12 5s8 1.79 8 4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        <rect x="4" y="9" width="16" height="2.5" rx="1" fill="#fff" opacity=".4"/>
+        <rect x="4" y="11.5" width="16" height="3" rx="1" fill="#fff" opacity=".8"/>
+        <rect x="4" y="14.5" width="16" height="2.5" rx="1" fill="#fff" opacity=".4"/>
+        <path d="M4 17C4 19.21 7.58 21 12 21s8-1.79 8-4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="rpt-title">{{ app_name }}</div>
+    <div class="rpt-subtitle">End of Day Summary</div>
+    <div class="rpt-period" id="eod-date-label">—</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="rpt-stats">
+    <div class="rpt-stat"><div class="rpt-stat-label">Total Revenue</div><div class="rpt-stat-value red">{{ currency }}{{ "%.2f"|format(summary.total_revenue) }}</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-label">Total Orders</div><div class="rpt-stat-value">{{ summary.total_orders }}</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-label">Avg. Order</div><div class="rpt-stat-value">{{ currency }}{{ "%.2f"|format(summary.avg_order) }}</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-label">Cash Collected</div><div class="rpt-stat-value green">{{ currency }}{{ "%.2f"|format(summary.cash_total) }}</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-label">Card Collected</div><div class="rpt-stat-value blue">{{ currency }}{{ "%.2f"|format(summary.card_total) }}</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-label">Discounts Given</div><div class="rpt-stat-value">{{ currency }}{{ "%.2f"|format(summary.total_discounts) }}</div></div>
+  </div>
+
+  {% if top_item %}
+  <div style="background:rgba(232,59,42,.05);border:1.5px solid rgba(232,59,42,.18);border-radius:var(--r-md);padding:.875rem 1rem;margin-bottom:1.125rem;display:flex;align-items:center;gap:.75rem">
+    <span style="font-size:1.375rem">🏆</span>
+    <div>
+      <div style="font-size:.5625rem;font-weight:800;color:var(--brand);text-transform:uppercase;letter-spacing:.09em">Best Seller Today</div>
+      <div style="font-size:.9375rem;font-weight:800;color:var(--text-dark)">{{ top_item.product_name }}</div>
+      <div style="font-size:.75rem;color:var(--text-dark-3)">{{ top_item.qty }} units sold</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <hr class="rpt-divider">
+  <div class="rpt-section-title">All Transactions Today ({{ transactions|length }})</div>
+
+  {% if transactions %}
+  <div class="report-section">
+    {% for tx in transactions %}
+    <div class="rpt-tx-row">
+      <span class="rpt-tx-num">{{ tx.order_number }}</span>
+      <span style="color:var(--text-dark);font-weight:600;font-size:.8125rem">{{ tx.cashier or '—' }}</span>
+      <span><span class="badge {% if tx.payment_method=='cash' %}badge-cash{% else %}badge-card{% endif %}">{{ tx.payment_method }}</span></span>
+      <span class="rpt-tx-amount">{{ currency }}{{ "%.2f"|format(tx.total) }}</span>
+    </div>
+    {% endfor %}
+    <div class="rpt-daily-total"><span>TOTAL</span><span>{{ currency }}{{ "%.2f"|format(summary.total_revenue) }}</span></div>
+  </div>
+  {% else %}
+  <p style="color:var(--text-dark-3);text-align:center;padding:1rem;font-size:.875rem">No transactions today.</p>
+  {% endif %}
+
+  <hr class="rpt-divider">
+  <div style="text-align:center;font-size:.6875rem;color:var(--text-dark-3)">Generated {{ now }} &mdash; {{ app_name }} POS</div>
+</div>
+
+
+<!-- ════════════════════════════════
+     MONTHLY MODE
+════════════════════════════════ -->
+{% else %}
+{% set month_names = ['','January','February','March','April','May','June','July','August','September','October','November','December'] %}
+<div class="report-card">
+  <div class="rpt-header">
+    <div class="rpt-brand-icon">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="26" height="26">
+        <path d="M4 9C4 6.79 7.58 5 12 5s8 1.79 8 4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        <rect x="4" y="9" width="16" height="2.5" rx="1" fill="#fff" opacity=".4"/>
+        <rect x="4" y="11.5" width="16" height="3" rx="1" fill="#fff" opacity=".8"/>
+        <rect x="4" y="14.5" width="16" height="2.5" rx="1" fill="#fff" opacity=".4"/>
+        <path d="M4 17C4 19.21 7.58 21 12 21s8-1.79 8-4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="rpt-title">{{ app_name }}</div>
+    <div class="rpt-subtitle">Monthly Sales Report</div>
+    <div class="rpt-period">{{ month_names[month] }} {{ year }}</div>
+  </div>
+
+  <!-- Summary stats -->
+  <div class="rpt-stats">
+    <div class="rpt-stat"><div class="rpt-stat-label">Total Revenue</div><div class="rpt-stat-value red">{{ currency }}{{ "%.2f"|format(m_summary.total_revenue) }}</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-label">Total Orders</div><div class="rpt-stat-value">{{ m_summary.total_orders }}</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-label">Avg. Order</div><div class="rpt-stat-value">{{ currency }}{{ "%.2f"|format(m_summary.avg_order) }}</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-label">Cash Sales</div><div class="rpt-stat-value green">{{ currency }}{{ "%.2f"|format(m_summary.cash_total) }}</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-label">Card Sales</div><div class="rpt-stat-value blue">{{ currency }}{{ "%.2f"|format(m_summary.card_total) }}</div></div>
+    <div class="rpt-stat"><div class="rpt-stat-label">Discounts</div><div class="rpt-stat-value">{{ currency }}{{ "%.2f"|format(m_summary.total_discounts) }}</div></div>
+  </div>
+
+  <!-- Best day highlight -->
+  {% if best_day %}
+  <div style="background:rgba(232,59,42,.05);border:1.5px solid rgba(232,59,42,.18);border-radius:var(--r-md);padding:.875rem 1rem;margin-bottom:1.125rem;display:flex;align-items:center;gap:.75rem">
+    <span style="font-size:1.375rem">📅</span>
+    <div style="flex:1">
+      <div style="font-size:.5625rem;font-weight:800;color:var(--brand);text-transform:uppercase;letter-spacing:.09em">Best Day This Month</div>
+      <div style="font-size:.9375rem;font-weight:800;color:var(--text-dark)">{{ best_day.day }}</div>
+      <div style="font-size:.75rem;color:var(--text-dark-3)">{{ currency }}{{ "%.2f"|format(best_day.revenue) }} revenue &mdash; {{ best_day.orders }} orders</div>
+    </div>
+    {% if m_summary.cash_orders + m_summary.card_orders > 0 %}
+    <div style="text-align:right">
+      <div style="font-size:.5625rem;font-weight:800;color:var(--text-dark-3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:.2rem">Payment Split</div>
+      <div style="font-size:.75rem;font-weight:700;color:var(--success)">💵 {{ m_summary.cash_orders }} cash</div>
+      <div style="font-size:.75rem;font-weight:700;color:var(--info)">💳 {{ m_summary.card_orders }} card</div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <hr class="rpt-divider">
+
+  <!-- Daily breakdown -->
+  <div class="rpt-section-title">Daily Breakdown — {{ month_names[month] }} {{ year }}</div>
+  {% if daily_breakdown %}
+  {% set max_rev = daily_breakdown | map(attribute='revenue') | max %}
+  <div class="report-section" style="margin-bottom:1rem">
+    <table class="rpt-daily-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Orders</th>
+          <th>Cash</th>
+          <th>Card</th>
+          <th>Revenue</th>
+          <th style="width:80px">Bar</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for day in daily_breakdown %}
+        <tr>
+          <td style="font-weight:700;color:var(--text-dark)">{{ day.day }}</td>
+          <td style="color:var(--text-dark-2)">{{ day.orders }}</td>
+          <td style="color:var(--success);font-weight:600">{{ currency }}{{ "%.2f"|format(day.cash) }}</td>
+          <td style="color:var(--info);font-weight:600">{{ currency }}{{ "%.2f"|format(day.card) }}</td>
+          <td style="font-weight:800;color:var(--text-dark)">{{ currency }}{{ "%.2f"|format(day.revenue) }}</td>
+          <td>
+            <div class="day-bar">
+              <div class="day-bar-fill" style="width:{{ ((day.revenue / max_rev) * 100)|int if max_rev > 0 else 0 }}%"></div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="rpt-daily-total">
+      <span>MONTHLY TOTAL</span>
+      <span>{{ currency }}{{ "%.2f"|format(m_summary.total_revenue) }}</span>
+    </div>
+  </div>
+  {% else %}
+  <p style="color:var(--text-dark-3);text-align:center;padding:1.5rem;font-size:.875rem">No sales data for {{ month_names[month] }} {{ year }}.</p>
+  {% endif %}
+
+  <hr class="rpt-divider">
+
+  <!-- Top items for the month -->
+  <div class="rpt-section-title">Top Selling Items — {{ month_names[month] }} {{ year }}</div>
+  {% if m_top_items %}
+  <div class="report-section">
+    {% for item in m_top_items %}
+    {% set rank = loop.index %}
+    <div class="rpt-item-row">
+      <div class="rpt-item-rank {{ 'gold' if rank==1 else 'silver' if rank==2 else 'bronze' if rank==3 else '' }}">
+        {{ rank }}
+      </div>
+      <div class="rpt-item-bar">
+        <div class="rpt-item-name">{{ item.product_name }}</div>
+        <div class="rpt-item-qty">{{ item.total_qty }} units sold</div>
+      </div>
+      <div class="rpt-item-rev">{{ currency }}{{ "%.2f"|format(item.total_revenue) }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color:var(--text-dark-3);text-align:center;padding:1rem;font-size:.875rem">No sales data.</p>
+  {% endif %}
+
+  <hr class="rpt-divider">
+  <div style="text-align:center;font-size:.6875rem;color:var(--text-dark-3)">Generated {{ now }} &mdash; {{ app_name }} POS</div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('eod-date-label');
+  if (el) el.textContent = new Date().toLocaleDateString('en-PH', {
+    weekday:'long', year:'numeric', month:'long', day:'numeric'
+  });
+});
+</script>
+{% endblock %}

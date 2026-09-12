@@ -1,0 +1,155 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Users{% endblock %}
+{% block page_title %}Users{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Users</h1>
+    <p>Manage staff accounts and roles</p>
+  </div>
+  <button class="btn btn-primary" onclick="openModal('modal-add-user')">+ Add User</button>
+</div>
+
+<div class="table-card">
+  <div class="table-card-header">
+    <span class="table-card-title">Staff ({{ users | length }})</span>
+    <div class="table-search">
+      <span>🔍</span>
+      <input type="text" id="search-users" placeholder="Search users…">
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table id="users-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Last Login</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td><strong>{{ u.full_name }}</strong></td>
+          <td class="td-muted">{{ u.username }}</td>
+          <td><span class="badge badge-{{ u.role }}">{{ u.role | title }}</span></td>
+          <td>
+            <span class="badge badge-{{ 'active' if u.is_active else 'inactive' }}">
+              {{ 'Active' if u.is_active else 'Inactive' }}
+            </span>
+          </td>
+          <td class="td-muted">{{ u.last_login or 'Never' }}</td>
+          <td>
+            <div class="td-actions">
+              <button class="btn btn-ghost btn-sm"onclick="openEditModal('modal-edit-user', {
+                id: {{ u.id }},
+                full_name: '{{ u.full_name | replace("'", "\\'") }}',
+                role: '{{ u.role }}',
+                is_active: '{{ u.is_active }}'
+              })">Edit</button>
+              {% if u.id != current_user.id %}
+              <form id="del-user-{{ u.id }}" method="POST" action="{{ url_for('delete_user_route', user_id=u.id) }}" style="display:inline">
+                <button type="button" class="btn btn-danger btn-sm"
+                  onclick="confirmDelete('del-user-{{ u.id }}', 'Delete {{ u.full_name }}?')">Delete</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal-backdrop" id="modal-add-user">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Add User</span>
+      <button class="modal-close" onclick="closeModal('modal-add-user')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('add_user_route') }}">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" name="full_name" class="form-control" placeholder="e.g. Juan dela Cruz" required>
+        </div>
+        <div class="form-group">
+          <label>Username *</label>
+          <input type="text" name="username" class="form-control" placeholder="e.g. juan123" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Password *</label>
+          <input type="password" name="password" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select name="role" class="form-control">
+            <option value="cashier">Cashier</option>
+            <option value="superadmin">Superadmin</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-user')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create User</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal-backdrop" id="modal-edit-user">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Edit User</span>
+      <button class="modal-close" onclick="closeModal('modal-edit-user')">✕</button>
+    </div>
+    <form method="POST" action="/users/edit/0">
+      <div class="form-group">
+        <label>Full Name *</label>
+        <input type="text" name="full_name" class="form-control" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Role</label>
+          <select name="role" class="form-control">
+            <option value="cashier">Cashier</option>
+            <option value="superadmin">Superadmin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select name="is_active" class="form-control">
+            <option value="1">Active</option>
+            <option value="0">Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>New Password <span style="color:var(--muted); font-weight:400;">(leave blank to keep)</span></label>
+        <input type="password" name="password" class="form-control" placeholder="Leave blank to keep current">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-edit-user')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    initTableSearch('search-users', 'users-table');
+  });
+</script>
+{% endblock %}

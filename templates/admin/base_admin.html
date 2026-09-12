@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Admin{% endblock %} — {{ app_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ font_url }}&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('theme_css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
+          <path d="M4 9C4 6.79 7.58 5 12 5s8 1.79 8 4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+          <rect x="4" y="9" width="16" height="2.5" rx="1" fill="#fff" opacity=".4"/>
+          <rect x="4" y="11.5" width="16" height="3" rx="1" fill="#fff" opacity=".8"/>
+          <rect x="4" y="14.5" width="16" height="2.5" rx="1" fill="#fff" opacity=".4"/>
+          <path d="M4 17C4 19.21 7.58 21 12 21s8-1.79 8-4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sidebar-brand-text">{{ app_name }}</div>
+        <div class="sidebar-brand-sub">Admin Panel</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <a title="Dashboard" href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <span class="nav-item-icon">📊</span> Dashboard
+      </a>
+      <div class="nav-section-label">Operations</div>
+      <a title="POS Terminal" href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+        <span class="nav-item-icon">🧾</span> POS Terminal
+      </a>
+
+      <div class="nav-section-label">Management</div>
+      <a title="Menu Items" href="{{ url_for('products') }}" class="nav-item {% if request.endpoint == 'products' %}active{% endif %}">
+        <span class="nav-item-icon">🍔</span> Menu Items
+      </a>
+      <a title="Transactions" href="{{ url_for('transactions') }}" class="nav-item {% if request.endpoint in ['transactions','transaction_detail'] %}active{% endif %}">
+        <span class="nav-item-icon">🧾</span> Transactions
+      </a>
+      <a title="Sales Reports" href="{{ url_for('reports') }}" class="nav-item {% if request.endpoint == 'reports' %}active{% endif %}">
+        <span class="nav-item-icon">📊</span> Sales Reports
+      </a>
+      <a title="End of Day" href="{{ url_for('eod') }}" class="nav-item {% if request.endpoint == 'eod' %}active{% endif %}">
+        <span class="nav-item-icon">📋</span> End of Day
+      </a>
+      <a title="Staff" href="{{ url_for('users') }}" class="nav-item {% if request.endpoint == 'users' %}active{% endif %}">
+        <span class="nav-item-icon">👥</span> Staff
+      </a>
+      <a title="Shifts" href="{{ url_for('shifts') }}" class="nav-item {% if request.endpoint in ['shifts','shift_detail'] %}active{% endif %}">
+        <span class="nav-item-icon">🕐</span> Shifts
+      </a>
+
+      <div class="nav-section-label">System</div>
+      <a title="Settings" href="{{ url_for('settings_page') }}" class="nav-item {% if request.endpoint == 'settings_page' %}active{% endif %}">
+        <span class="nav-item-icon">⚙️</span> Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      {% if current_user %}
+      <div class="sidebar-user">
+        <div class="sidebar-avatar">{{ current_user['full_name'][0] | upper }}</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name">{{ current_user['full_name'] }}</div>
+          <div class="sidebar-user-role">{{ current_user['role'] | title }}</div>
+        </div>
+      </div>
+      {% endif %}
+      <a href="{{ url_for('logout') }}" class="btn-logout">Sign Out</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-content">
+    <header class="topbar">
+      <span class="topbar-title">{% block page_title %}{% endblock %}</span>
+      <div class="topbar-right">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" style="margin:0; padding:.5rem .9rem; font-size:.8rem;">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endwith %}
+      </div>
+    </header>
+
+    <main class="page-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+</div>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

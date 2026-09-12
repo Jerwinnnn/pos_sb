@@ -1,0 +1,473 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block extra_css %}
+<style>
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* Section card */
+.settings-card {
+  background: #fff;
+  border: 1.5px solid var(--menu-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1.125rem;
+}
+.settings-card-header {
+  padding: .875rem 1.25rem;
+  border-bottom: 1.5px solid var(--menu-border);
+  background: var(--menu-bg);
+  display: flex; align-items: center; gap: .625rem;
+}
+.settings-card-icon { font-size: 1rem; }
+.settings-card-title { font-size: .9375rem; font-weight: 800; color: var(--text-dark); letter-spacing: -.01em; }
+.settings-card-body  { padding: 1.25rem; }
+
+/* Theme preset grid */
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .5rem;
+  margin-bottom: .75rem;
+}
+.preset-btn {
+  position: relative;
+  padding: .625rem .5rem;
+  border-radius: var(--r-md);
+  border: 2px solid var(--menu-border);
+  background: #fff;
+  cursor: pointer;
+  transition: all var(--tx-fast);
+  text-align: center;
+  overflow: hidden;
+}
+.preset-btn:hover { border-color: var(--menu-border-2); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.preset-btn.active { border-width: 2.5px; box-shadow: var(--shadow); }
+.preset-swatch {
+  width: 28px; height: 28px; border-radius: 50%;
+  margin: 0 auto .4rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+.preset-label { font-size: .6875rem; font-weight: 800; color: var(--text-dark); line-height: 1.2; }
+.preset-desc  { font-size: .5625rem; color: var(--text-dark-3); margin-top: .1rem; }
+.preset-check {
+  position: absolute; top: .3rem; right: .3rem;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .55rem; color: #fff;
+}
+
+/* Font preview */
+.font-option {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .625rem .875rem;
+  border-radius: var(--r);
+  border: 1.5px solid var(--menu-border);
+  background: #fff; cursor: pointer;
+  transition: all var(--tx-fast); margin-bottom: .4rem;
+}
+.font-option:hover { border-color: var(--menu-border-2); }
+.font-option.active { border-color: var(--brand); background: var(--brand-dim); }
+.font-option input[type=radio] { display: none; }
+.font-preview-text { font-size: 1rem; font-weight: 700; flex: 1; }
+.font-label { font-size: .75rem; font-weight: 600; color: var(--text-dark-2); }
+
+/* Emoji picker */
+.emoji-set {
+  display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .5rem;
+}
+.emoji-pick-btn {
+  width: 36px; height: 36px;
+  border-radius: var(--r-sm); font-size: 1.1rem;
+  border: 1.5px solid var(--menu-border);
+  background: var(--menu-bg); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--tx-fast);
+}
+.emoji-pick-btn:hover { border-color: var(--brand); transform: scale(1.1); }
+.emoji-pick-btn.active { border-color: var(--brand); background: var(--brand-dim); }
+
+/* Live preview card */
+.preview-card {
+  background: #fff;
+  border: 1.5px solid var(--menu-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  position: sticky; top: 70px;
+}
+.preview-card-header {
+  padding: .875rem 1.25rem;
+  border-bottom: 1.5px solid var(--menu-border);
+  background: var(--menu-bg);
+  font-size: .875rem; font-weight: 800; color: var(--text-dark);
+}
+.preview-body { padding: 1.25rem; }
+
+/* Preview components */
+.prev-topbar {
+  border-radius: var(--r); overflow: hidden;
+  box-shadow: var(--shadow-sm); margin-bottom: .875rem;
+}
+.prev-topbar-inner {
+  padding: .625rem .875rem;
+  display: flex; align-items: center; gap: .625rem;
+}
+.prev-brand-icon {
+  width: 32px; height: 32px; border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; flex-shrink: 0;
+}
+.prev-brand-name { font-weight: 800; font-size: .875rem; }
+.prev-brand-sub  { font-size: .55rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; opacity: .6; }
+
+.prev-btn {
+  display: inline-block; padding: .4rem .875rem;
+  border-radius: var(--r-sm); font-size: .75rem;
+  font-weight: 800; border: none; cursor: default;
+}
+
+.prev-product-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: .4rem;
+}
+.prev-product-card {
+  padding: .625rem; border-radius: var(--r-sm);
+  border: 1.5px solid var(--menu-border);
+  font-size: .6875rem;
+}
+.prev-product-name  { font-weight: 700; font-size: .75rem; margin-bottom: .15rem; }
+.prev-product-price { font-weight: 800; font-size: .8125rem; }
+
+.prev-order-panel {
+  border-radius: var(--r); overflow: hidden;
+  margin-top: .625rem;
+}
+.prev-order-header { padding: .5rem .75rem; font-size: .75rem; font-weight: 800; }
+.prev-order-body   { padding: .625rem .75rem; }
+.prev-total-row    { display: flex; justify-content: space-between; font-size: .75rem; font-weight: 800; margin-top: .4rem; padding-top: .4rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Theme Management</h1>
+    <p>Customize your POS store name, theme, and appearance</p>
+  </div>
+</div>
+
+<form method="POST" action="{{ url_for('save_settings_route') }}" id="settings-form">
+<div class="settings-grid">
+
+  <!-- ═══ LEFT: Settings panels ═══ -->
+  <div>
+
+    <!-- Store Identity -->
+    <div class="settings-card">
+      <div class="settings-card-header">
+        <span class="settings-card-icon">🏪</span>
+        <span class="settings-card-title">Store Identity</span>
+      </div>
+      <div class="settings-card-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Store Name *</label>
+            <input type="text" name="store_name" class="form-control"
+                   id="inp-store-name"
+                   value="{{ settings.store_name }}"
+                   placeholder="e.g. Sabbis Burger"
+                   oninput="updatePreview()" required>
+          </div>
+          <div class="form-group">
+            <label>Tagline</label>
+            <input type="text" name="store_tagline" class="form-control"
+                   id="inp-tagline"
+                   value="{{ settings.store_tagline }}"
+                   placeholder="e.g. Point of Sale System"
+                   oninput="updatePreview()">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Currency Symbol</label>
+            <input type="text" name="currency_symbol" class="form-control"
+                   id="inp-currency"
+                   value="{{ settings.currency_symbol }}"
+                   placeholder="₱" maxlength="3"
+                   oninput="updatePreview()"
+                   style="max-width:80px">
+          </div>
+          <div class="form-group">
+            <label>Receipt Footer Message</label>
+            <input type="text" name="receipt_footer" class="form-control"
+                   value="{{ settings.receipt_footer }}"
+                   placeholder="Thank you for your purchase!">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0">
+          <label>Logo Icon</label>
+          <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.4rem">
+            <div style="width:40px;height:40px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;font-size:1.4rem" id="logo-preview-box">{{ settings.logo_emoji }}</div>
+            <input type="text" name="logo_emoji" id="inp-logo-emoji" class="form-control"
+                   value="{{ settings.logo_emoji }}"
+                   style="max-width:70px;font-size:1.2rem;text-align:center"
+                   oninput="document.getElementById('logo-preview-box').textContent=this.value;updatePreview()">
+          </div>
+          <div class="emoji-set">
+            {% for e in ['🛒','🍔','🍕','🍜','☕','🥤','🍱','🥗','🌮','🍣','🍦','🧁','🏪','⭐','🔥','💎','🌟','🎯','🏆','✨'] %}
+            <button type="button" class="emoji-pick-btn {{ 'active' if e == settings.logo_emoji }}"
+                    onclick="pickLogoEmoji('{{ e }}')">{{ e }}</button>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme Color -->
+    <div class="settings-card">
+      <div class="settings-card-header">
+        <span class="settings-card-icon">🎨</span>
+        <span class="settings-card-title">Brand Color</span>
+      </div>
+      <div class="settings-card-body">
+        <input type="hidden" name="theme_preset" id="inp-preset" value="{{ settings.theme_preset }}">
+        <input type="hidden" name="theme_color"  id="inp-color"  value="{{ settings.theme_color }}">
+
+        <div class="preset-grid" id="preset-grid">
+          {% for key, preset in presets.items() %}
+          {% if key != 'custom' %}
+          <button type="button"
+                  class="preset-btn {{ 'active' if settings.theme_preset == key }}"
+                  id="preset-btn-{{ key }}"
+                  data-key="{{ key }}"
+                  data-color="{{ preset.color }}"
+                  onclick="selectPreset('{{ key }}', '{{ preset.color }}')"
+                  style="{{ 'border-color:' + preset.color if settings.theme_preset == key }}">
+            <div class="preset-swatch" style="background:{{ preset.color }}"></div>
+            <div class="preset-label">{{ preset.label }}</div>
+            <div class="preset-desc">{{ preset.desc }}</div>
+            <div class="preset-check" style="background:{{ preset.color }};display:{{ 'flex' if settings.theme_preset == key else 'none' }}">✓</div>
+          </button>
+          {% endif %}
+          {% endfor %}
+        </div>
+
+        <!-- Custom color -->
+        <div style="display:flex;align-items:center;gap:.75rem;padding:.75rem;background:var(--menu-bg);border-radius:var(--r);border:1.5px solid var(--menu-border)">
+          <input type="color" id="custom-color-picker"
+                 value="{{ settings.theme_color }}"
+                 oninput="selectPreset('custom', this.value)"
+                 style="width:40px;height:40px;border:none;border-radius:var(--r-sm);cursor:pointer;background:none;padding:0">
+          <div>
+            <div style="font-size:.8125rem;font-weight:700;color:var(--text-dark)">Custom Color</div>
+            <div style="font-size:.6875rem;color:var(--text-dark-3)" id="custom-color-label">{{ settings.theme_color }}</div>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto"
+                  onclick="selectPreset('custom', document.getElementById('custom-color-picker').value)">
+            Use This
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Font -->
+    <div class="settings-card">
+      <div class="settings-card-header">
+        <span class="settings-card-icon">🔤</span>
+        <span class="settings-card-title">Font Style</span>
+      </div>
+      <div class="settings-card-body">
+        {% for key, font in fonts.items() %}
+        <label class="font-option {{ 'active' if settings.font == key }}"
+               id="font-opt-{{ key }}"
+               onclick="selectFont('{{ key }}','{{ font.label }}')">
+          <input type="radio" name="font" value="{{ key }}" {{ 'checked' if settings.font == key }}>
+          <span class="font-preview-text" style="font-family:'{{ font.label }}',sans-serif">Aa — {{ font.label }}</span>
+          <span class="font-label">{{ font.label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg" style="width:100%">
+      💾 Save Settings
+    </button>
+
+  </div>
+
+  <!-- ═══ RIGHT: Live preview ═══ -->
+  <div>
+    <div class="preview-card">
+      <div class="preview-card-header">👁 Live Preview</div>
+      <div class="preview-body">
+
+        <!-- Topbar preview -->
+        <div class="prev-topbar" style="border:1.5px solid var(--menu-border)">
+          <div class="prev-topbar-inner" style="background:#fff">
+            <div class="prev-brand-icon" id="prev-brand-icon"
+                 style="background:{{ settings.theme_color }}">
+              <span id="prev-logo-emoji" style="color:#fff">{{ settings.logo_emoji }}</span>
+            </div>
+            <div>
+              <div class="prev-brand-name" id="prev-store-name">{{ settings.store_name }}</div>
+              <div class="prev-brand-sub"  id="prev-tagline">{{ settings.store_tagline }}</div>
+            </div>
+            <div style="margin-left:auto">
+              <div class="prev-btn" id="prev-charge-btn"
+                   style="background:{{ settings.theme_color }};color:#fff">
+                Charge ₱100
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category pills -->
+        <div style="display:flex;gap:.4rem;margin-bottom:.625rem;flex-wrap:wrap">
+          <div class="prev-btn" id="prev-cat-active"
+               style="background:{{ settings.theme_color }};color:#fff;font-size:.6875rem;padding:.3rem .625rem">
+            🍔 All
+          </div>
+          <div style="padding:.3rem .625rem;border-radius:99px;font-size:.6875rem;font-weight:700;border:1.5px solid var(--menu-border);color:var(--text-dark-2)">
+            🧀 Cheese
+          </div>
+          <div style="padding:.3rem .625rem;border-radius:99px;font-size:.6875rem;font-weight:700;border:1.5px solid var(--menu-border);color:var(--text-dark-2)">
+            🥤 Drinks
+          </div>
+        </div>
+
+        <!-- Product cards -->
+        <div class="prev-product-grid" style="margin-bottom:.75rem">
+          <div class="prev-product-card" id="prev-card-1">
+            <div class="prev-product-name">Regular Burger</div>
+            <div class="prev-product-price" id="prev-price-1">₱25.00</div>
+          </div>
+          <div class="prev-product-card" style="border-color:var(--brand)"
+               id="prev-card-2">
+            <div class="prev-product-name">Cheese Burger</div>
+            <div class="prev-product-price" id="prev-price-2">₱30.00</div>
+          </div>
+        </div>
+
+        <!-- Order panel -->
+        <div class="prev-order-panel" style="border:1.5px solid #1A1C22">
+          <div class="prev-order-header" style="background:#1A1C22;color:#F0F2F8">
+            Order <span style="background:{{ settings.theme_color }};color:#fff;border-radius:99px;padding:.1rem .4rem;font-size:.625rem">2</span>
+          </div>
+          <div class="prev-order-body" style="background:#23262F">
+            <div style="font-size:.6875rem;color:#9BA3B8;margin-bottom:.3rem">Regular Burger × 1 &nbsp; <span style="color:{{ settings.theme_color }};font-weight:800">₱25.00</span></div>
+            <div style="font-size:.6875rem;color:#9BA3B8">Cheese Burger × 1 &nbsp; <span style="color:{{ settings.theme_color }};font-weight:800">₱30.00</span></div>
+            <div class="prev-total-row" style="border-top:1px solid #333848;color:#F0F2F8">
+              <span>Total</span>
+              <span id="prev-total" style="color:{{ settings.theme_color }}">₱55.00</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:.75rem;font-size:.6875rem;color:var(--text-dark-3);text-align:center;font-style:italic"
+             id="prev-footer">{{ settings.receipt_footer }}</div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentColor = '{{ settings.theme_color }}';
+let currentFont  = '{{ settings.font }}';
+
+function hexToRgba(hex, alpha) {
+  try {
+    const h = hex.replace('#','');
+    const r = parseInt(h.slice(0,2),16);
+    const g = parseInt(h.slice(2,4),16);
+    const b = parseInt(h.slice(4,6),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  } catch(e) { return `rgba(232,59,42,${alpha})`; }
+}
+
+function applyColorToPreview(color) {
+  currentColor = color;
+  // Update all preview elements
+  document.getElementById('prev-brand-icon').style.background = color;
+  document.getElementById('prev-cat-active').style.background = color;
+  document.getElementById('prev-charge-btn').style.background = color;
+  document.getElementById('prev-price-1').style.color  = color;
+  document.getElementById('prev-price-2').style.color  = color;
+  document.getElementById('prev-total').style.color    = color;
+  document.getElementById('prev-card-2').style.borderColor = color;
+
+  // Update CSS variable live on the page
+  document.documentElement.style.setProperty('--brand',      color);
+  document.documentElement.style.setProperty('--brand-dim',  hexToRgba(color, 0.1));
+  document.documentElement.style.setProperty('--brand-glow', hexToRgba(color, 0.22));
+}
+
+function selectPreset(key, color) {
+  document.getElementById('inp-preset').value = key;
+  document.getElementById('inp-color').value  = color;
+  document.getElementById('custom-color-picker').value = color;
+  document.getElementById('custom-color-label').textContent = color;
+
+  // Update preset button styles
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    const isActive = btn.dataset.key === key;
+    btn.classList.toggle('active', isActive);
+    btn.style.borderColor = isActive ? btn.dataset.color : '';
+    const check = btn.querySelector('.preset-check');
+    if (check) check.style.display = isActive ? 'flex' : 'none';
+  });
+
+  applyColorToPreview(color);
+}
+
+function selectFont(key, label) {
+  currentFont = key;
+  document.querySelectorAll('.font-option').forEach(o => {
+    o.classList.toggle('active', o.id === 'font-opt-' + key);
+  });
+  document.querySelector(`input[value="${key}"]`).checked = true;
+}
+
+function pickLogoEmoji(emoji) {
+  document.getElementById('inp-logo-emoji').value = emoji;
+  document.getElementById('logo-preview-box').textContent = emoji;
+  document.getElementById('prev-logo-emoji').textContent  = emoji;
+
+  document.querySelectorAll('.emoji-pick-btn').forEach(b =>
+    b.classList.toggle('active', b.textContent === emoji));
+}
+
+function updatePreview() {
+  const name     = document.getElementById('inp-store-name').value || 'My Store';
+  const tagline  = document.getElementById('inp-tagline').value || 'POS Terminal';
+  const currency = document.getElementById('inp-currency').value || '₱';
+  const logo     = document.getElementById('inp-logo-emoji').value || '🛒';
+
+  document.getElementById('prev-store-name').textContent = name;
+  document.getElementById('prev-tagline').textContent    = tagline;
+  document.getElementById('prev-logo-emoji').textContent = logo;
+
+  // Update currency in preview prices
+  document.getElementById('prev-price-1').textContent = currency + '25.00';
+  document.getElementById('prev-price-2').textContent = currency + '30.00';
+  document.getElementById('prev-total').textContent   = currency + '55.00';
+  document.getElementById('prev-charge-btn').textContent = 'Charge ' + currency + '100';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  applyColorToPreview(currentColor);
+});
+</script>
+{% endblock %}

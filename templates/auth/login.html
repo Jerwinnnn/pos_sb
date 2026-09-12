@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — {{ app_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ font_url }}&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('theme_css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="brand">
+      <div class="brand-icon-wrap">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+          <path d="M6 12C6 9.24 10.48 7 16 7s10 2.24 10 5" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+          <rect x="6" y="12" width="20" height="3" rx="1.5" fill="#fff" opacity=".35"/>
+          <rect x="6" y="15" width="20" height="4" rx="2" fill="#fff" opacity=".8"/>
+          <rect x="6" y="19" width="20" height="3" rx="1.5" fill="#fff" opacity=".35"/>
+          <path d="M6 22C6 24.76 10.48 27 16 27s10-2.24 10-5" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h1>{{ app_name }}</h1>
+      <p>Point of Sale System</p>
+    </div>
+
+    <div class="login-card">
+      <h2>Sign in to continue</h2>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">
+            {% if category == 'error' %}⚠️{% elif category == 'success' %}✅{% elif category == 'warning' %}🔔{% else %}ℹ️{% endif %}
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('login') }}">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <div class="input-wrap">
+            <span class="input-icon">👤</span>
+            <input type="text" id="username" name="username" class="form-control"
+                   placeholder="Enter your username" autocomplete="username"
+                   value="{{ request.form.get('username', '') }}" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input type="password" id="password" name="password"
+                   class="form-control has-toggle"
+                   placeholder="Enter your password"
+                   autocomplete="current-password" required>
+            <button type="button" class="toggle-pw" onclick="togglePassword()" aria-label="Show password">👁</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-login">Sign In</button>
+      </form>
+
+      <!-- <div class="creds-hint">
+        <div class="creds-hint-title">Default credentials</div>
+        <div class="cred-row" onclick="fillCredentials('admin','admin123')" title="Click to fill">
+          <span><code>admin</code> / <code>admin123</code></span>
+          <span class="badge badge-superadmin">Superadmin</span>
+        </div>
+        <div class="cred-row" onclick="fillCredentials('cashier','cashier123')" title="Click to fill">
+          <span><code>cashier</code> / <code>cashier123</code></span>
+          <span class="badge badge-cashier">Cashier</span>
+        </div>
+        <div class="creds-warning">⚠️ Change default passwords after first login.</div>
+      </div> -->
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+</body>
+</html>

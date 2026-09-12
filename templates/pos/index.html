@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>POS — {{ app_name }}</title>
+  <meta id="currency-meta" data-currency="{{ currency }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ font_url }}&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('theme_css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pos.css') }}">
+</head>
+<body>
+<div class="pos-shell">
+
+  <!-- ══ TOPBAR ══ -->
+  <header class="pos-topbar">
+    <div class="pos-brand">
+      <div class="pos-brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+          <path d="M4 9C4 6.79 7.58 5 12 5s8 1.79 8 4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+          <rect x="4" y="9" width="16" height="2.5" rx="1" fill="#fff" opacity=".4"/>
+          <rect x="4" y="11.5" width="16" height="3" rx="1" fill="#fff" opacity=".7"/>
+          <rect x="4" y="14.5" width="16" height="2.5" rx="1" fill="#fff" opacity=".4"/>
+          <path d="M4 17C4 19.21 7.58 21 12 21s8-1.79 8-4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="pos-brand-name">{{ app_name }}</div>
+        <div class="pos-brand-sub">POS Terminal</div>
+      </div>
+    </div>
+
+    <div class="pos-topbar-sep"></div>
+
+    <div class="pos-topbar-center">
+      <div class="pos-search-wrap">
+        <span class="pos-search-icon">🔍</span>
+        <input type="text" id="pos-search" placeholder="Search menu items…">
+        <span class="pos-search-hint">/</span>
+      </div>
+    </div>
+
+    <div class="pos-topbar-right">
+      <div class="pos-clock" id="pos-clock">--:--</div>
+      <div class="pos-today-pill">
+        <span class="pos-today-label">Today</span>
+        <span class="pos-today-value">{{ currency }}{{ "%.2f"|format(today_sales.total) }}</span>
+      </div>
+      {% if current_user %}
+      <div class="pos-cashier-chip">
+        <div class="pos-cashier-avatar">{{ current_user['full_name'][0]|upper }}</div>
+        <div>
+          <div class="pos-cashier-name">{{ current_user['full_name'] }}</div>
+          <div class="pos-cashier-role">{{ current_user['role'] }}</div>
+        </div>
+      </div>
+      {% endif %}
+      <!-- Cart toggle (tablet only) -->
+      <div class="cart-drawer-toggle">
+        <button class="cart-tab-btn" onclick="toggleCartDrawer()">
+          🧾 Order
+          <span class="cart-tab-count" id="cart-tab-count">0</span>
+        </button>
+      </div>
+
+      {% if current_user and current_user['role'] == 'superadmin' %}
+      <a href="{{ url_for('dashboard') }}" class="btn btn-ghost btn-sm">
+        <span>⚙</span><span class="pos-admin-btn-text"> Dashboard</span>
+      </a>
+      {% endif %}
+
+      <!-- Shift status -->
+      {% if active_shift %}
+        <div class="shift-active-badge" onclick="openModal('modal-clockout')" title="Click to end shift">
+          <span class="shift-dot"></span>
+          <span>On Shift</span>
+          <span class="shift-timer" id="shift-timer" data-start="{{ active_shift['clock_in'] }}">--:--</span>
+        </div>
+      {% else %}
+        <button class="btn btn-ghost btn-sm shift-start-btn"
+                onclick="openModal('modal-clockin')">
+          🕐 Start Shift
+        </button>
+      {% endif %}
+
+      <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-sm">Sign out</a>
+    </div>
+  </header>
+
+  <!-- ══ MENU PANE ══ -->
+  <div class="products-pane">
+    <!-- Category tabs -->
+    <div class="category-tabs">
+      <button class="cat-tab active" data-id="" onclick="filterByCategory('')">🍔 All</button>
+      {% for cat in categories %}
+      <button class="cat-tab" data-id="{{ cat.id }}" onclick="filterByCategory({{ cat.id }})">
+        {{ cat.icon }} {{ cat.name }}
+      </button>
+      {% endfor %}
+    </div>
+
+    <!-- Product grid -->
+    <div class="product-grid" id="product-grid">
+      {% for p in products %}
+      {% set out = not p.is_available or p.stock <= 0 %}
+      <div class="product-card {{ 'out-of-stock' if out }}"
+           id="pcard-{{ p.id }}"
+           onclick="{{ '' if out else 'addToCart(' ~ p.id ~ ', \'' ~ p.name|replace("'","\\'") ~ '\', ' ~ p.price ~ ', ' ~ p.stock ~ ')' }}">
+        {% if out %}<span class="out-of-stock-label">Unavailable</span>{% endif %}
+        <div class="product-card-top">
+          {% if p.image %}
+            <img src="{{ url_for('static', filename=p.image) }}"
+                 style="width:44px;height:44px;object-fit:cover;border-radius:var(--r-sm);flex-shrink:0"
+                 alt="{{ p.name }}">
+          {% else %}
+            <div class="product-cat-icon">{{ p.category_icon or '🍔' }}</div>
+          {% endif %}
+          <div class="product-qty-badge" id="qty-{{ p.id }}" style="display:none">0</div>
+        </div>
+        <div class="product-name">{{ p.name }}</div>
+        {% if p.description %}<div class="product-desc">{{ p.description }}</div>{% endif %}
+        <div class="product-price">{{ currency }}{{ "%.2f"|format(p.price) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ══ ORDER PANE ══ -->
+  <div class="cart-pane">
+
+    <!-- Header -->
+    <div class="cart-header">
+      <div class="cart-header-row">
+        <span class="cart-title">
+          Order
+          <span class="cart-count" id="cart-count">0</span>
+        </span>
+        <button class="btn-clear-cart" onclick="clearCart()">Clear all</button>
+      </div>
+      <div class="cart-order-num" id="cart-order-num">New order — tap items to add</div>
+    </div>
+
+    <!-- ── Column headers ── -->
+    <div class="cart-col-headers" id="cart-col-headers" style="display:none">
+      <span class="cart-col-label"></span>
+      <span class="cart-col-label">Item</span>
+      <span class="cart-col-label right">Price</span>
+    </div>
+
+    <!-- ── Empty state (outside cart-items so innerHTML doesn't destroy it) ── -->
+    <div class="cart-empty" id="cart-empty">
+      <div class="cart-empty-icon">🍔</div>
+      <p>No items yet</p>
+      <p class="cart-empty-hint">Tap any menu item to add</p>
+    </div>
+
+    <!-- ── Order items list ── -->
+    <div class="cart-items" id="cart-items"></div>
+
+    <!-- Discount (hidden by default) -->
+    <div class="cart-discount-row" id="cart-discount-row" style="display:none">
+      <label>Discount ({{ currency }})</label>
+      <input type="number" id="discount-input" class="form-control"
+             min="0" step="1" placeholder="0" value="0">
+    </div>
+
+    <!-- Footer -->
+    <div class="cart-footer">
+
+      <!-- Totals -->
+      <div class="cart-totals">
+        <div class="totals-row">
+          <span>Subtotal</span>
+          <span id="cart-subtotal">{{ currency }}0.00</span>
+        </div>
+        <div class="totals-row" id="discount-display-row" style="display:none">
+          <span>Discount</span>
+          <span id="cart-discount-display" style="color:var(--success-text)">
+            -{{ currency }}0.00
+          </span>
+        </div>
+        <div class="totals-row total">
+          <span>Total</span>
+          <span id="cart-total">{{ currency }}0.00</span>
+        </div>
+      </div>
+
+      <!-- Payment -->
+      <div class="payment-methods">
+        <button class="pay-method-btn active" data-method="cash" onclick="selectPaymentMethod('cash')">
+          💵 Cash
+        </button>
+        <button class="pay-method-btn" data-method="card" onclick="selectPaymentMethod('card')">
+          💳 Card
+        </button>
+        <button class="pay-method-btn pay-gcash" data-method="gcash" onclick="selectPaymentMethod('gcash')">
+          <img src="{{ url_for('static', filename='img/gcash.png') }}"
+               onerror="this.style.display='none';this.nextSibling.style.display='inline'"
+               style="height:14px;vertical-align:middle;margin-right:.25rem" alt="">
+          <span>GCash</span>
+        </button>
+      </div>
+
+      <!-- GCash reference number (shown only when gcash selected) -->
+      <div class="gcash-ref-wrap" id="gcash-ref-wrap" style="display:none">
+        <div class="gcash-ref-label">
+          <span>GCash Reference No.</span>
+          <span class="gcash-required">Required</span>
+        </div>
+        <input type="text" id="gcash-ref-input" class="form-control gcash-ref-input"
+               placeholder="e.g. 1234567890123"
+               maxlength="20"
+               oninput="validateGcashRef()">
+        <div class="gcash-ref-hint">13-digit number from customer's GCash receipt</div>
+      </div>
+
+      <!-- Numpad (cash only) -->
+      <div class="numpad-wrap" id="numpad-wrap">
+        <div class="numpad-display-row">
+          <span class="numpad-label">Cash Tendered</span>
+          <input type="number" id="cash-tendered" class="numpad-display"
+                 placeholder="0.00" min="0" step="0.01" readonly>
+        </div>
+        <div class="numpad-quick">
+          <button class="quick-btn" onclick="setCashAmount('exact')">Exact</button>
+          <button class="quick-btn" onclick="setCashAmount(50)">₱50</button>
+          <button class="quick-btn" onclick="setCashAmount(100)">₱100</button>
+          <button class="quick-btn" onclick="setCashAmount(200)">₱200</button>
+          <button class="quick-btn" onclick="setCashAmount(500)">₱500</button>
+          <button class="quick-btn" onclick="setCashAmount(1000)">₱1,000</button>
+        </div>
+        <div class="numpad-grid">
+          <button class="numpad-btn" onclick="numpadPress('7')">7</button>
+          <button class="numpad-btn" onclick="numpadPress('8')">8</button>
+          <button class="numpad-btn" onclick="numpadPress('9')">9</button>
+          <button class="numpad-btn" onclick="numpadPress('4')">4</button>
+          <button class="numpad-btn" onclick="numpadPress('5')">5</button>
+          <button class="numpad-btn" onclick="numpadPress('6')">6</button>
+          <button class="numpad-btn" onclick="numpadPress('1')">1</button>
+          <button class="numpad-btn" onclick="numpadPress('2')">2</button>
+          <button class="numpad-btn" onclick="numpadPress('3')">3</button>
+          <button class="numpad-btn" onclick="numpadPress('0')">0</button>
+          <button class="numpad-btn" onclick="numpadPress('.')">.</button>
+          <button class="numpad-btn numpad-back" onclick="numpadPress('back')">⌫</button>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="cart-actions">
+        <button class="btn-disc" id="btn-discount" onclick="toggleDiscount()">% Disc</button>
+        <button class="btn-clear" onclick="clearCart()">🗑 Clear</button>
+        <button class="btn btn-primary btn-checkout" id="btn-checkout" onclick="checkout()" disabled>
+          Charge <span class="checkout-amount" id="checkout-total">{{ currency }}0.00</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Cart drawer backdrop (tablet) -->
+  <div class="cart-drawer-backdrop" id="cart-drawer-backdrop" onclick="toggleCartDrawer()"></div>
+
+</div><!-- end .pos-shell -->
+
+<!-- ══ CLOCK IN MODAL ══ -->
+<div class="modal-backdrop" id="modal-clockin">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <span class="modal-title">🕐 Start Shift</span>
+      <button class="modal-close" onclick="closeModal('modal-clockin')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('shift_clock_in') }}">
+      <div style="text-align:center;padding:.5rem 0 1.25rem">
+        {% if current_user %}
+        <div class="shift-modal-avatar">{{ current_user['full_name'][0]|upper }}</div>
+        <div class="shift-modal-name">{{ current_user['full_name'] }}</div>
+        <div class="shift-modal-role">{{ current_user['role']|title }}</div>
+        {% endif %}
+        <div class="shift-modal-time" id="clockin-time"></div>
+      </div>
+      <div class="form-group">
+        <label style="color:var(--text-light-2);font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em">
+          Opening Cash in Drawer ({{ currency }})
+        </label>
+        <input type="number" name="opening_cash" class="form-control"
+               style="background:var(--order-bg);border-color:var(--order-border-2);color:var(--text-light)"
+               placeholder="0.00" min="0" step="0.01" value="0">
+        <div style="font-size:.7rem;color:var(--text-light-3);margin-top:.3rem">
+          Count the cash in your drawer before starting
+        </div>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--order-border);margin-top:1rem;padding-top:1rem">
+        <button type="button" class="btn btn-ghost-dark" onclick="closeModal('modal-clockin')">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex:1">
+          ✅ Clock In & Start Shift
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══ CLOCK OUT MODAL ══ -->
+<div class="modal-backdrop" id="modal-clockout">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <span class="modal-title">🏁 End Shift</span>
+      <button class="modal-close" onclick="closeModal('modal-clockout')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('shift_clock_out') }}">
+      {% if active_shift %}
+      <div class="shift-summary-box">
+        <div class="shift-summary-row">
+          <span>Clocked In</span>
+          <strong>{{ active_shift['clock_in'][:16]|replace('T',' ') }}</strong>
+        </div>
+        <div class="shift-summary-row">
+          <span>Duration</span>
+          <strong id="clockout-duration">—</strong>
+        </div>
+      </div>
+      {% endif %}
+      <div class="form-group" style="margin-top:.875rem">
+        <label style="color:var(--text-light-2);font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em">
+          Closing Cash in Drawer ({{ currency }})
+        </label>
+        <input type="number" name="closing_cash" class="form-control"
+               style="background:var(--order-bg);border-color:var(--order-border-2);color:var(--text-light)"
+               placeholder="0.00" min="0" step="0.01">
+        <div style="font-size:.7rem;color:var(--text-light-3);margin-top:.3rem">
+          Count the cash before closing the drawer
+        </div>
+      </div>
+      <div class="form-group">
+        <label style="color:var(--text-light-2);font-size:.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em">
+          Notes (optional)
+        </label>
+        <input type="text" name="notes" class="form-control"
+               style="background:var(--order-bg);border-color:var(--order-border-2);color:var(--text-light)"
+               placeholder="e.g. No issues today">
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--order-border);margin-top:1rem;padding-top:1rem">
+        <button type="button" class="btn btn-ghost-dark" onclick="closeModal('modal-clockout')">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex:1;background:var(--danger);box-shadow:0 4px 14px rgba(239,68,68,.35)">
+          🏁 End Shift
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══ RECEIPT MODAL ══ -->
+<div class="receipt-modal-backdrop" id="receipt-modal-backdrop">
+  <div class="receipt-modal">
+
+    <div class="receipt-brand">
+      <div class="receipt-brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="24" height="24">
+          <path d="M4 9C4 6.79 7.58 5 12 5s8 1.79 8 4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+          <rect x="4" y="9" width="16" height="2.5" rx="1" fill="#fff" opacity=".4"/>
+          <rect x="4" y="11.5" width="16" height="3" rx="1" fill="#fff" opacity=".7"/>
+          <rect x="4" y="14.5" width="16" height="2.5" rx="1" fill="#fff" opacity=".4"/>
+          <path d="M4 17C4 19.21 7.58 21 12 21s8-1.79 8-4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="receipt-brand-name">{{ app_name }}</div>
+    </div>
+
+    <div class="receipt-order-num" id="receipt-order-num">—</div>
+    <div class="receipt-status">Order Complete!</div>
+
+    <hr class="receipt-divider">
+    <div id="receipt-items-list"></div>
+    <hr class="receipt-divider">
+
+    <div>
+      <div class="receipt-row" id="receipt-gcash-row" style="display:none">
+        <span>GCash Ref #</span>
+        <span id="receipt-gcash-ref" style="font-family:monospace;font-weight:700;color:var(--brand)"></span>
+      </div>
+      <div class="receipt-row"><span>Subtotal</span><span id="receipt-subtotal">{{ currency }}0.00</span></div>
+      <div class="receipt-row" id="receipt-discount-row" style="display:none">
+        <span>Discount</span>
+        <span id="receipt-discount" style="color:var(--success)">-{{ currency }}0.00</span>
+      </div>
+      <div class="receipt-row receipt-grand-total">
+        <span>Total</span><span id="receipt-total">{{ currency }}0.00</span>
+      </div>
+    </div>
+
+    <div class="receipt-change" id="receipt-change-wrap">
+      <div class="receipt-change-label">Change</div>
+      <div class="receipt-change-amount" id="receipt-change">{{ currency }}0.00</div>
+    </div>
+
+    <div class="receipt-cashier">
+      Served by <strong>{{ current_user['full_name'] if current_user else 'Cashier' }}</strong>
+    </div>
+
+    <div class="receipt-footer">
+      <button class="btn btn-ghost receipt-footer" onclick="closeReceipt()">Close</button>
+      <button class="btn btn-primary" onclick="newOrder()">New Order →</button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pos.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "store_name": "SABBI'S BURGER",
+  "store_tagline": "POS",
+  "currency_symbol": "₱",
+  "theme_color": "#F97316",
+  "theme_preset": "orange",
+  "font": "nunito",
+  "logo_emoji": "🌮",
+  "receipt_footer": "Thank you for your purchase!"
+}

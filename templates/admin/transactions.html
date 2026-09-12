@@ -1,0 +1,109 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Transactions{% endblock %}
+{% block page_title %}Transactions{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Transactions</h1>
+    <p>Sales history and summaries</p>
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-card-label">Today's Sales</div>
+    <div class="stat-card-value">{{ currency }}{{ "%.2f"|format(today.total) }}</div>
+    <div class="stat-card-sub">{{ today.count }} transaction{{ 's' if today.count != 1 }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-label">All-Time Revenue</div>
+    <div class="stat-card-value">{{ currency }}{{ "%.2f"|format(overall.total) }}</div>
+    <div class="stat-card-sub">{{ overall.count }} total transactions</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-label">Avg. Order Value</div>
+    <div class="stat-card-value">
+      {% if overall.count > 0 %}
+        {{ currency }}{{ "%.2f"|format(overall.total / overall.count) }}
+      {% else %}—{% endif %}
+    </div>
+    <div class="stat-card-sub">Per transaction</div>
+  </div>
+</div>
+
+<div class="table-card">
+  <div class="table-card-header">
+    <span class="table-card-title">Recent Transactions</span>
+    <div class="table-search">
+      <span>🔍</span>
+      <input type="text" id="search-tx" placeholder="Search…">
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table id="tx-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date & Time</th>
+          <th>Cashier</th>
+          <th>Items</th>
+          <th>Payment</th>
+          <th>Total</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+        <tr>
+          <td class="td-muted">#{{ "%05d"|format(tx.id) }}</td>
+          <td class="td-muted">{{ tx.created_at }}</td>
+          <td>
+            {% if tx.cashier_name %}
+            <div style="display:flex;align-items:center;gap:.4rem">
+              <div style="width:24px;height:24px;border-radius:50%;background:var(--brand-dim);border:1.5px solid rgba(232,59,42,.25);display:flex;align-items:center;justify-content:center;font-size:.625rem;font-weight:800;color:var(--brand);flex-shrink:0">{{ tx.cashier_name[0]|upper }}</div>
+              <span style="font-size:.8125rem;font-weight:600;color:var(--text-dark)">{{ tx.cashier_name }}</span>
+            </div>
+            {% else %}
+            <span class="td-muted">—</span>
+            {% endif %}
+          </td>
+          <td>{{ tx.item_count }} item{{ 's' if tx.item_count != 1 }}</td>
+          <td>
+            <span class="badge badge-{{ tx.payment_method }}">{{ tx.payment_method | title }}</span>
+            {% if tx.payment_method == 'gcash' and tx.gcash_ref %}
+            <div style="font-size:.6875rem;font-family:monospace;color:var(--text-dark-3);margin-top:.2rem;font-weight:700">
+              # {{ tx.gcash_ref }}
+            </div>
+            {% endif %}
+          </td>
+          <td><strong>{{ currency }}{{ "%.2f"|format(tx.total) }}</strong></td>
+          <td>
+            <div class="td-actions">
+              <a href="{{ url_for('transaction_detail', transaction_id=tx.id) }}" class="btn btn-ghost btn-sm">View</a>
+              <form id="void-{{ tx.id }}" method="POST" action="{{ url_for('void_transaction_route', transaction_id=tx.id) }}" style="display:inline">
+                <button type="button" class="btn btn-sm"
+                  style="background:var(--danger-dim);border-color:rgba(239,68,68,.25);color:var(--danger-text)"
+                  onclick="confirmDelete('void-{{ tx.id }}', 'Void order {{ tx.order_number }}? This will restore stock and cannot be undone.')">
+                  Void
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="td-muted" style="text-align:center; padding:2rem;">No transactions yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    initTableSearch('search-tx', 'tx-table');
+  });
+</script>
+{% endblock %}

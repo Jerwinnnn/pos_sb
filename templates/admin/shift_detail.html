@@ -1,0 +1,193 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Shift #{{ shift.id }}{% endblock %}
+{% block page_title %}Shift Detail{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Shift #{{ shift.id }}</h1>
+    <p>{{ shift.full_name }} — {{ shift.clock_in[:10] }}</p>
+  </div>
+  <a href="{{ url_for('shifts') }}" class="btn btn-ghost btn-sm">← Back to Shifts</a>
+</div>
+
+<div style="display:grid;grid-template-columns:340px 1fr;gap:1.25rem;align-items:start">
+
+  <!-- Shift info card -->
+  <div>
+    <div class="table-card" style="margin-bottom:1.125rem">
+      <div class="table-card-header">
+        <span class="table-card-title">Shift Summary</span>
+        {% if shift.status == 'active' %}
+        <span class="badge badge-active" style="animation:pulse-badge 2s infinite">🟢 Active</span>
+        {% else %}
+        <span class="badge badge-inactive">Closed</span>
+        {% endif %}
+      </div>
+      <div style="padding:1.125rem">
+
+        <!-- Cashier -->
+        <div style="display:flex;align-items:center;gap:.75rem;padding-bottom:1rem;margin-bottom:1rem;border-bottom:1px solid var(--menu-border)">
+          <div style="width:44px;height:44px;border-radius:50%;background:var(--brand);color:#fff;font-size:1.1rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            {{ shift.full_name[0]|upper }}
+          </div>
+          <div>
+            <div style="font-size:1rem;font-weight:800;color:var(--text-dark)">{{ shift.full_name }}</div>
+            <div style="font-size:.75rem;color:var(--text-dark-3)">{{ shift.role|title }}</div>
+          </div>
+        </div>
+
+        <!-- Times -->
+        {% set info_rows = [
+          ('Clock In',  shift.clock_in[:16]|replace('T',' ')),
+          ('Clock Out', shift.clock_out[:16]|replace('T',' ') if shift.clock_out else '— Still active'),
+        ] %}
+        {% for label, val in info_rows %}
+        <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--menu-border);font-size:.8125rem">
+          <span style="color:var(--text-dark-3)">{{ label }}</span>
+          <strong>{{ val }}</strong>
+        </div>
+        {% endfor %}
+
+        <!-- Duration -->
+        <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--menu-border);font-size:.8125rem">
+          <span style="color:var(--text-dark-3)">Duration</span>
+          <strong>
+            {% if shift.clock_out %}
+              {% set h = (shift.clock_out[:16]|string).__class__ %}
+              <!-- computed server-side below -->
+              <span id="shift-duration">—</span>
+            {% else %}
+              <span id="shift-duration" class="shift-live-timer" data-start="{{ shift.clock_in }}">—</span>
+            {% endif %}
+          </strong>
+        </div>
+
+        <!-- Cash -->
+        {% if shift.opening_cash %}
+        <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--menu-border);font-size:.8125rem">
+          <span style="color:var(--text-dark-3)">Opening Cash</span>
+          <strong>{{ currency }}{{ "%.2f"|format(shift.opening_cash) }}</strong>
+        </div>
+        {% endif %}
+        {% if shift.closing_cash is not none %}
+        <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--menu-border);font-size:.8125rem">
+          <span style="color:var(--text-dark-3)">Closing Cash</span>
+          <strong>{{ currency }}{{ "%.2f"|format(shift.closing_cash) }}</strong>
+        </div>
+        {% if shift.opening_cash %}
+        <div style="display:flex;justify-content:space-between;padding:.4rem 0;font-size:.8125rem">
+          <span style="color:var(--text-dark-3)">Cash Difference</span>
+          {% set diff = shift.closing_cash - shift.opening_cash - (stats.cash_sales or 0) %}
+          <strong style="color:{{ 'var(--success)' if diff >= 0 else 'var(--danger)' }}">
+            {{ '+' if diff >= 0 }}{{ currency }}{{ "%.2f"|format(diff) }}
+          </strong>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        {% if shift.notes %}
+        <div style="margin-top:.75rem;padding:.625rem;background:var(--menu-bg);border-radius:var(--r);font-size:.8125rem;color:var(--text-dark-2)">
+          📝 {{ shift.notes }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Sales stats -->
+    {% if stats %}
+    <div class="stats-grid" style="grid-template-columns:1fr 1fr;gap:.625rem">
+      <div class="stat-card">
+        <div class="stat-card-label">Orders</div>
+        <div class="stat-card-value brand">{{ stats.total_orders }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">Revenue</div>
+        <div class="stat-card-value" style="font-size:1.25rem">{{ currency }}{{ "%.2f"|format(stats.total_revenue) }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">💵 Cash</div>
+        <div class="stat-card-value" style="font-size:1.1rem;color:var(--success)">{{ currency }}{{ "%.2f"|format(stats.cash_sales) }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-label">📱 GCash</div>
+        <div class="stat-card-value" style="font-size:1.1rem;color:#0075E6">{{ currency }}{{ "%.2f"|format(stats.gcash_sales) }}</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Transactions during shift -->
+  <div class="table-card">
+    <div class="table-card-header">
+      <span class="table-card-title">Transactions During This Shift ({{ transactions|length }})</span>
+    </div>
+    {% if transactions %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Order #</th><th>Time</th><th>Items</th><th>Payment</th><th>Total</th></tr>
+        </thead>
+        <tbody>
+          {% for tx in transactions %}
+          <tr>
+            <td><a href="{{ url_for('transaction_detail', transaction_id=tx.id) }}" style="color:var(--brand);font-weight:700">{{ tx.order_number }}</a></td>
+            <td class="td-muted">{{ tx.created_at[11:16] }}</td>
+            <td>{{ tx.item_count }}</td>
+            <td><span class="badge badge-{{ tx.payment_method }}">{{ tx.payment_method|title }}</span></td>
+            <td><strong>{{ currency }}{{ "%.2f"|format(tx.total) }}</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">🧾</div>
+      <p>No transactions recorded during this shift.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@keyframes pulse-badge { 0%,100%{opacity:1} 50%{opacity:.6} }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Duration for closed shifts — computed from timestamps
+  const durEl = document.getElementById('shift-duration');
+  if (!durEl) return;
+
+  if (durEl.classList.contains('shift-live-timer')) {
+    // Active shift — count up live
+    const startStr = durEl.dataset.start;
+    const tick = () => {
+      const start = new Date(startStr.replace(' ','T'));
+      const diff  = Math.floor((new Date() - start) / 1000);
+      const h = Math.floor(diff/3600);
+      const m = Math.floor((diff%3600)/60);
+      const s = diff%60;
+      durEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    };
+    tick(); setInterval(tick, 1000);
+  } else {
+    // Closed shift — compute from clock_in / clock_out
+    const clockIn  = '{{ shift.clock_in[:16] }}'.replace(' ','T');
+    const clockOut = '{{ shift.clock_out[:16] if shift.clock_out else "" }}'.replace(' ','T');
+    if (clockIn && clockOut) {
+      const diff = Math.floor((new Date(clockOut) - new Date(clockIn)) / 1000);
+      const h = Math.floor(diff/3600);
+      const m = Math.floor((diff%3600)/60);
+      durEl.textContent = h > 0 ? `${h}h ${m}m` : `${m}m`;
+    }
+  }
+});
+</script>
+{% endblock %}

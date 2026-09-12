@@ -1,0 +1,188 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Sales Reports{% endblock %}
+{% block page_title %}Sales Reports{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Sales Reports</h1>
+    <p>Track your revenue, best sellers, and peak hours</p>
+  </div>
+  <div style="display:flex;gap:.5rem">
+    {% for p, label in [('today','Today'),('week','This Week'),('month','This Month')] %}
+    <a href="{{ url_for('reports', period=p) }}"
+       class="btn {% if period == p %}btn-primary{% else %}btn-ghost{% endif %} btn-sm">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Summary cards -->
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+  <div class="stat-card">
+    <div class="stat-card-label">Revenue</div>
+    <div class="stat-card-value brand">{{ currency }}{{ "%.2f"|format(summary.revenue) }}</div>
+    <div class="stat-card-sub">{{ summary.orders }} orders</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-label">Avg. Order</div>
+    <div class="stat-card-value">{{ currency }}{{ "%.2f"|format(summary.avg_order) }}</div>
+    <div class="stat-card-sub">Per transaction</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-label">Cash Sales</div>
+    <div class="stat-card-value" style="color:var(--success)">{{ currency }}{{ "%.2f"|format(summary.cash_revenue) }}</div>
+    <div class="stat-card-sub">{{ summary.cash_orders }} cash orders</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-label">Card Sales</div>
+    <div class="stat-card-value" style="color:var(--info)">{{ currency }}{{ "%.2f"|format(summary.card_revenue) }}</div>
+    <div class="stat-card-sub">{{ summary.card_orders }} card orders</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.125rem;margin-bottom:1.125rem">
+
+  <!-- 7-day trend chart -->
+  <div class="table-card" style="overflow:visible">
+    <div class="table-card-header"><span class="table-card-title">📈 7-Day Revenue Trend</span></div>
+    <div style="padding:1.125rem">
+      <canvas id="trendChart" height="180"></canvas>
+    </div>
+  </div>
+
+  <!-- Hourly heatmap -->
+  <div class="table-card" style="overflow:visible">
+    <div class="table-card-header"><span class="table-card-title">⏰ Orders by Hour</span></div>
+    <div style="padding:1.125rem">
+      <canvas id="hourlyChart" height="180"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- Top items table -->
+<div class="table-card">
+  <div class="table-card-header">
+    <span class="table-card-title">🏆 Best Selling Items</span>
+    <span style="font-size:.75rem;color:var(--text-dark-3);font-weight:600">
+      Period: {{ {'today':'Today','week':'This Week','month':'This Month'}[period] }}
+    </span>
+  </div>
+  {% if top_items %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Item</th><th>Qty Sold</th><th>Revenue</th><th>Share</th></tr>
+      </thead>
+      <tbody>
+        {% set total_qty = top_items|sum(attribute='total_qty') %}
+        {% for i, item in top_items|enumerate %}
+        <tr>
+          <td class="td-muted">{{ i+1 }}</td>
+          <td><strong>{{ item.product_name }}</strong></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:.625rem">
+              <div style="background:var(--menu-border);border-radius:99px;height:6px;width:80px;overflow:hidden">
+                <div style="background:var(--brand);height:100%;width:{{ ((item.total_qty / (top_items[0].total_qty or 1)) * 100)|int }}%;border-radius:99px"></div>
+              </div>
+              <strong>{{ item.total_qty }}</strong>
+            </div>
+          </td>
+          <td><strong>{{ currency }}{{ "%.2f"|format(item.total_revenue) }}</strong></td>
+          <td class="td-muted">
+            {% if total_qty > 0 %}{{ "%.1f"|format((item.total_qty / total_qty) * 100) }}%{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="empty-state-icon">📊</div><p>No sales data for this period</p></div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const currency = '{{ currency }}';
+const brandColor = '#E83B2A';
+const gridColor = 'rgba(0,0,0,0.06)';
+const font = { family: "'Nunito', sans-serif", size: 11, weight: '700' };
+
+Chart.defaults.font = font;
+Chart.defaults.color = '#8A8F9C';
+
+// 7-day trend
+const trendData = {{ daily_trend | tojson }};
+const trendLabels = trendData.map(d => {
+  const dt = new Date(d.day);
+  return dt.toLocaleDateString('en-PH',{weekday:'short',month:'short',day:'numeric'});
+});
+
+new Chart(document.getElementById('trendChart'), {
+  type: 'bar',
+  data: {
+    labels: trendLabels,
+    datasets: [{
+      label: 'Revenue',
+      data: trendData.map(d => d.revenue),
+      backgroundColor: trendData.map((d,i) => i === trendData.length-1 ? brandColor : 'rgba(232,59,42,0.2)'),
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${currency}${ctx.raw.toLocaleString('en-PH',{minimumFractionDigits:2})}` } }
+    },
+    scales: {
+      x: { grid: { display: false }, border: { display: false } },
+      y: { grid: { color: gridColor }, border: { display: false },
+           ticks: { callback: v => currency + v.toLocaleString() } }
+    }
+  }
+});
+
+// Hourly
+const hourlyData = {{ hourly | tojson }};
+const hours = Array.from({length:24}, (_,i) => String(i).padStart(2,'0'));
+const ordersByHour = hours.map(h => {
+  const found = hourlyData.find(d => d.hr === h);
+  return found ? found.orders : 0;
+});
+const maxOrders = Math.max(...ordersByHour, 1);
+
+new Chart(document.getElementById('hourlyChart'), {
+  type: 'bar',
+  data: {
+    labels: hours.map(h => h + ':00'),
+    datasets: [{
+      label: 'Orders',
+      data: ordersByHour,
+      backgroundColor: ordersByHour.map(v => {
+        const intensity = v / maxOrders;
+        return `rgba(232,59,42,${0.15 + intensity * 0.85})`;
+      }),
+      borderRadius: 4,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, border: { display: false },
+           ticks: { maxRotation: 45, font: { size: 9 } } },
+      y: { grid: { color: gridColor }, border: { display: false },
+           ticks: { stepSize: 1 } }
+    }
+  }
+});
+</script>
+{% endblock %}

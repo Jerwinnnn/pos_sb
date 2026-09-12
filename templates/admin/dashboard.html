@@ -1,0 +1,189 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Dashboard</h1>
+    <p id="dash-date" style="color:var(--text-dark-3);font-size:.8125rem;margin-top:.2rem"></p>
+  </div>
+  <div style="display:flex;gap:.5rem;align-items:center">
+    <span id="refresh-badge" style="font-size:.6875rem;color:var(--text-dark-3);font-weight:600"></span>
+    <a href="{{ url_for('eod') }}" class="btn btn-ghost btn-sm">📋 End of Day</a>
+    <a href="{{ url_for('reports') }}" class="btn btn-ghost btn-sm">📊 Reports</a>
+    <a href="{{ url_for('index') }}" class="btn btn-primary">🧾 Open POS</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid" id="stats-grid">
+  <div class="stat-card">
+    <div class="stat-card-label">Today's Revenue</div>
+    <div class="stat-card-value brand" id="stat-today-rev">{{ currency }}{{ "%.2f"|format(today.total) }}</div>
+    <div class="stat-card-sub" id="stat-today-orders">{{ today.count }} order{{ 's' if today.count != 1 }} today</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-label">All-Time Revenue</div>
+    <div class="stat-card-value" id="stat-overall-rev">{{ currency }}{{ "%.2f"|format(overall.total) }}</div>
+    <div class="stat-card-sub">{{ overall.count }} total orders</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-label">Avg. Order Value</div>
+    <div class="stat-card-value">
+      {% if today.count > 0 %}{{ currency }}{{ "%.2f"|format(today.total / today.count) }}{% else %}—{% endif %}
+    </div>
+    <div class="stat-card-sub">Per transaction today</div>
+  </div>
+  <div class="stat-card" style="{{ 'border-color:rgba(34,197,94,.4)' if active_shifts > 0 }}">
+    <div class="stat-card-label">Active Shifts</div>
+    <div class="stat-card-value" style="{{ 'color:var(--success)' if active_shifts > 0 }}">
+      {{ active_shifts }}
+    </div>
+    <div class="stat-card-sub">
+      <a href="{{ url_for('shifts') }}" style="color:var(--brand)">{{ today_shifts }} shift{{ 's' if today_shifts != 1 }} today</a>
+    </div>
+  </div>
+  <div class="stat-card" style="border-color:{% if low_stock|length > 0 %}rgba(239,68,68,.4){% else %}var(--menu-border){% endif %}">
+    <div class="stat-card-label">Low Stock Alerts</div>
+    <div class="stat-card-value" style="color:{% if low_stock|length > 0 %}var(--danger){% else %}var(--success){% endif %}">
+      {{ low_stock|length }}
+    </div>
+    <div class="stat-card-sub">
+      {% if low_stock|length > 0 %}Items need restocking{% else %}All items well stocked{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Low stock alert banner -->
+{% if low_stock %}
+<div class="low-stock-banner" id="low-stock-banner">
+  <div class="lsb-icon">⚠️</div>
+  <div class="lsb-content">
+    <div class="lsb-title">{{ low_stock|length }} item{{ 's' if low_stock|length != 1 }} running low on stock</div>
+    <div class="lsb-items">
+      {% for p in low_stock %}
+      <span class="lsb-chip {% if p.stock == 0 %}lsb-chip-danger{% endif %}">
+        {{ p.name }} — <strong>{{ p.stock }} left</strong>
+      </span>
+      {% endfor %}
+    </div>
+  </div>
+  <a href="{{ url_for('products') }}" class="btn btn-sm" style="background:var(--danger);color:#fff;border-color:var(--danger);flex-shrink:0">
+    Restock Now
+  </a>
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.125rem;margin-bottom:1.125rem">
+
+  <!-- Top items today -->
+  <div class="table-card">
+    <div class="table-card-header">
+      <span class="table-card-title">🏆 Top Items Today</span>
+      <a href="{{ url_for('reports') }}" class="btn btn-ghost btn-sm">Full report</a>
+    </div>
+    {% if top_products %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Item</th><th>Qty</th><th>Revenue</th><th>Bar</th></tr></thead>
+        <tbody>
+          {% set max_qty = top_products[0].total_qty %}
+          {% for p in top_products %}
+          <tr>
+            <td><strong>{{ p.product_name }}</strong></td>
+            <td><span class="badge" style="background:var(--brand-dim);color:var(--brand)">{{ p.total_qty }}</span></td>
+            <td>{{ currency }}{{ "%.2f"|format(p.total_revenue) }}</td>
+            <td style="width:80px">
+              <div style="background:var(--menu-border);border-radius:99px;height:6px;overflow:hidden">
+                <div style="background:var(--brand);height:100%;width:{{ ((p.total_qty / max_qty) * 100)|int }}%;border-radius:99px;transition:width .5s"></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><div class="empty-state-icon">📊</div><p>No sales yet today</p></div>
+    {% endif %}
+  </div>
+
+  <!-- Recent transactions -->
+  <div class="table-card">
+    <div class="table-card-header">
+      <span class="table-card-title">🕐 Recent Orders</span>
+      <a href="{{ url_for('transactions') }}" class="btn btn-ghost btn-sm">View all</a>
+    </div>
+    {% if recent_tx %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Order #</th><th>Items</th><th>Total</th><th>Cashier</th><th>Time</th></tr></thead>
+        <tbody>
+          {% for tx in recent_tx %}
+          <tr>
+            <td><a href="{{ url_for('transaction_detail', transaction_id=tx.id) }}" style="color:var(--brand);font-weight:700">{{ tx.order_number }}</a></td>
+            <td class="td-muted">{{ tx.item_count }}</td>
+            <td><strong>{{ currency }}{{ "%.2f"|format(tx.total) }}</strong></td>
+            <td class="td-muted">{{ tx.cashier_name or '—' }}</td>
+            <td class="td-muted">{{ tx.created_at[11:16] if tx.created_at else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><div class="empty-state-icon">🧾</div><p>No orders yet today</p></div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Quick links -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.875rem">
+  {% set links = [
+    ('products',     '🍔', 'Menu Items',    'Add, edit, or hide items'),
+    ('transactions', '🧾', 'Transactions',  'Browse all sales history'),
+    ('reports',      '📊', 'Sales Reports', 'Daily, weekly, monthly'),
+    ('users',        '👥', 'Staff Accounts','Manage cashier logins'),
+  ] %}
+  {% for route, icon, label, desc in links %}
+  <a href="{{ url_for(route) }}" class="stat-card quicklink-card" style="text-decoration:none">
+    <div style="font-size:1.5rem;margin-bottom:.375rem">{{ icon }}</div>
+    <div class="stat-card-label" style="margin-bottom:.2rem">{{ label }}</div>
+    <div style="font-size:.75rem;color:var(--text-dark-3)">{{ desc }}</div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('dash-date');
+  if (el) el.textContent = new Date().toLocaleDateString('en-PH', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // Live refresh every 30s
+  const badge = document.getElementById('refresh-badge');
+  let countdown = 30;
+  function tick() {
+    if (badge) badge.textContent = `Refreshes in ${countdown}s`;
+    if (--countdown < 0) {
+      countdown = 30;
+      fetch('/api/dashboard-stats')
+        .then(r => r.json())
+        .then(d => {
+          const currency = '{{ currency }}';
+          const fmt = v => currency + Number(v).toLocaleString('en-PH', {minimumFractionDigits:2});
+          document.getElementById('stat-today-rev').textContent    = fmt(d.today_revenue);
+          document.getElementById('stat-today-orders').textContent = d.today_orders + ' order' + (d.today_orders!=1?'s':'') + ' today';
+          document.getElementById('stat-overall-rev').textContent  = fmt(d.overall_revenue);
+          if (badge) badge.textContent = 'Just refreshed';
+          setTimeout(() => { countdown = 30; }, 1000);
+        }).catch(() => {});
+    }
+  }
+  setInterval(tick, 1000);
+});
+</script>
+{% endblock %}

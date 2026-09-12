@@ -1,0 +1,64 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Transaction #{{ "%05d"|format(transaction.id) }}{% endblock %}
+{% block page_title %}Transaction Detail{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Transaction #{{ "%05d"|format(transaction.id) }}</h1>
+    <p>{{ transaction.created_at }}</p>
+  </div>
+  <a href="{{ url_for('transactions') }}" class="btn btn-ghost">← Back</a>
+</div>
+
+<div style="max-width:560px;">
+  <div class="table-card" style="margin-bottom:1rem;">
+    <div class="table-card-header"><span class="table-card-title">Items Ordered</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Subtotal</th></tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>{{ item.product_name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ currency }}{{ "%.2f"|format(item.unit_price) }}</td>
+            <td><strong>{{ currency }}{{ "%.2f"|format(item.subtotal) }}</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div style="display:flex; flex-direction:column; gap:.5rem;">
+      <div style="display:flex; justify-content:space-between; font-size:.85rem; color:var(--text-2);">
+        <span>Payment Method</span>
+        <span class="badge badge-{{ transaction.payment_method }}">{{ transaction.payment_method | title }}</span>
+      </div>
+      {% if transaction.payment_method == 'gcash' and transaction.gcash_ref %}
+      <div style="display:flex; justify-content:space-between; font-size:.85rem; color:var(--text-2);">
+        <span>GCash Reference #</span>
+        <span style="font-family:monospace;font-weight:800;color:var(--brand);font-size:.9375rem;letter-spacing:.04em">
+          {{ transaction.gcash_ref }}
+        </span>
+      </div>
+      {% endif %}
+      {% if transaction.cash_tendered %}
+      <div style="display:flex; justify-content:space-between; font-size:.85rem; color:var(--text-2);">
+        <span>Cash Tendered</span><span>{{ currency }}{{ "%.2f"|format(transaction.cash_tendered) }}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:.85rem; color:var(--text-2);">
+        <span>Change</span><span>{{ currency }}{{ "%.2f"|format(transaction.change_given) }}</span>
+      </div>
+      {% endif %}
+      <div style="display:flex; justify-content:space-between; font-size:1.1rem; font-weight:700; padding-top:.5rem; border-top:1px solid var(--border); color:var(--amber-h);">
+        <span>Total</span><span>{{ currency }}{{ "%.2f"|format(transaction.total) }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
