@@ -47,6 +47,38 @@
         </span>
       </div>
       {% endif %}
+
+      {% if transaction.discount_type and transaction.discount_type != 'regular' %}
+      <div style="display:flex; justify-content:space-between; font-size:.85rem; color:var(--text-2);">
+        <span>Discount Type</span>
+        <span style="font-weight:700;color:var(--brand)">
+          {% if transaction.discount_type == 'senior_citizen' %}Senior Citizen (RA 9994)
+          {% elif transaction.discount_type == 'pwd' %}PWD (RA 10754)
+          {% else %}{{ transaction.discount_type | title }}
+          {% endif %}
+        </span>
+      </div>
+      {% endif %}
+
+      {% if transaction.discount and transaction.discount > 0 %}
+      <div style="display:flex; justify-content:space-between; font-size:.85rem; color:var(--text-2);">
+        <span>Discount Applied</span>
+        <span style="color:var(--success)">-{{ currency }}{{ "%.2f"|format(transaction.discount) }}</span>
+      </div>
+      {% endif %}
+
+      {% if transaction.tax_rate and transaction.tax_rate > 0 and not transaction.vat_exempt %}
+      <div style="display:flex; justify-content:space-between; font-size:.85rem; color:var(--text-2);">
+        <span>VAT ({{ "%.0f"|format(transaction.tax_rate) }}%) Included</span>
+        <span>{{ currency }}{{ "%.2f"|format(transaction.tax_amount) }}</span>
+      </div>
+      {% elif transaction.vat_exempt %}
+      <div style="display:flex; justify-content:space-between; font-size:.85rem; color:var(--text-2);">
+        <span>VAT</span>
+        <span style="color:var(--success);font-weight:700">Exempt</span>
+      </div>
+      {% endif %}
+
       {% if transaction.cash_tendered %}
       <div style="display:flex; justify-content:space-between; font-size:.85rem; color:var(--text-2);">
         <span>Cash Tendered</span><span>{{ currency }}{{ "%.2f"|format(transaction.cash_tendered) }}</span>

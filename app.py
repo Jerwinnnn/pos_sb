@@ -28,7 +28,7 @@ def save_upload(file_field, subfolder):
     f.save(dest)
     return f"uploads/{subfolder}/{filename}" 
 from database import (
-    init_db,
+    init_db, migrate_db,
     get_all_products, get_products_by_category, search_products,
     get_product, add_product, update_product, delete_product,
     get_all_categories, add_category, update_category, delete_category,
@@ -55,15 +55,25 @@ app.jinja_env.filters['enumerate'] = enumerate
 def inject_globals():
     s = load_settings()
     return {
-        'current_user':   current_user(),
-        'app_name':       s.get('store_name', 'My Store'),
-        'store_tagline':  s.get('store_tagline', 'Point of Sale System'),
-        'currency':       s.get('currency_symbol', '₱'),
-        'logo_emoji':     s.get('logo_emoji', '🛒'),
-        'receipt_footer': s.get('receipt_footer', 'Thank you!'),
-        'settings':       s,
-        'font_url':       FONT_OPTIONS.get(s.get('font','nunito'), FONT_OPTIONS['nunito'])['google'],
-        'active_shift':   get_active_shift(session['user_id']) if 'user_id' in session else None,
+        'current_user':      current_user(),
+        'app_name':          s.get('store_name', 'My Store'),
+        'store_tagline':     s.get('store_tagline', 'Point of Sale System'),
+        'currency':          s.get('currency_symbol', '₱'),
+        'logo_emoji':        s.get('logo_emoji', '🛒'),
+        'receipt_footer':    s.get('receipt_footer', 'Thank you!'),
+        'settings':          s,
+        'font_url':          FONT_OPTIONS.get(s.get('font','nunito'), FONT_OPTIONS['nunito'])['google'],
+        'active_shift':      get_active_shift(session['user_id']) if 'user_id' in session else None,
+        # Tax & business detail globals (used by receipt templates)
+        'tax_enabled':       s.get('tax_enabled', '0') == '1',
+        'tax_rate':          float(s.get('tax_rate', '12')),
+        'tax_inclusive':     s.get('tax_inclusive', '1') == '1',
+        'tin_number':        s.get('tin_number', ''),
+        'bir_permit':        s.get('bir_permit', ''),
+        'dti_sec_number':    s.get('dti_sec_number', ''),
+        'business_address':  s.get('business_address', ''),
+        'business_contact':  s.get('business_contact', ''),
+        'current_year':      __import__('datetime').datetime.now().year,
     }
 
 @app.route('/theme.css')
@@ -136,14 +146,28 @@ def api_checkout():
     cash_tendered  = data.get('cash_tendered')
     discount       = data.get('discount', 0)
     notes          = data.get('notes', '')
-    gcash_ref = data.get('gcash_ref', '').strip()
+    gcash_ref      = data.get('gcash_ref', '').strip()
+    discount_type  = data.get('discount_type', 'regular')
+
+    # Validate discount type — only known values accepted
+    if discount_type not in ('regular', 'senior_citizen', 'pwd'):
+        discount_type = 'regular'
 
     if not cart:
         return jsonify({'error': 'Cart is empty'}), 400
 
-    # Validate GCash reference number
     if payment_method == 'gcash' and not gcash_ref:
         return jsonify({'error': 'GCash reference number is required.'}), 400
+
+    # Load tax settings server-side — never trust client for tax computation
+    s             = load_settings()
+    tax_enabled   = s.get('tax_enabled', '0') == '1'
+    tax_rate      = float(s.get('tax_rate', '12'))
+    tax_inclusive = s.get('tax_inclusive', '1') == '1'
+
+    # SC/PWD discounts override any manual discount per RA 9994 / RA 10754
+    if discount_type in ('senior_citizen', 'pwd'):
+        discount = 0
 
     try:
         transaction_id, order_number = create_transaction(
@@ -152,15 +176,26 @@ def api_checkout():
             served_by=session.get('user_id'),
             discount=float(discount) if discount else 0,
             notes=notes,
-            gcash_ref=gcash_ref if payment_method == 'gcash' else None
+            gcash_ref=gcash_ref if payment_method == 'gcash' else None,
+            discount_type=discount_type,
+            tax_rate=tax_rate,
+            tax_enabled=tax_enabled,
+            tax_inclusive=tax_inclusive,
         )
         tx, items = get_transaction(transaction_id)
         return jsonify({
-            'success': True, 'transaction_id': transaction_id,
-            'order_number': order_number, 'total': tx['total'],
-            'discount': tx['discount'], 'change': tx['change_given'],
-            'gcash_ref': tx['gcash_ref'],
-            'items': [dict(i) for i in items]
+            'success':       True,
+            'transaction_id': transaction_id,
+            'order_number':  order_number,
+            'total':         tx['total'],
+            'discount':      tx['discount'],
+            'change':        tx['change_given'],
+            'gcash_ref':     tx['gcash_ref'],
+            'tax_amount':    tx['tax_amount'] if tx['tax_amount'] is not None else 0,
+            'tax_rate':      tx['tax_rate'] if tx['tax_rate'] is not None else 0,
+            'vat_exempt':    bool(tx['vat_exempt']),
+            'discount_type': tx['discount_type'] or 'regular',
+            'items':         [dict(i) for i in items]
         })
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
@@ -269,9 +304,10 @@ def restock():
 @app.route('/transactions/void/<int:transaction_id>', methods=['POST'])
 @superadmin_required
 def void_transaction_route(transaction_id):
+    reason = request.form.get('void_reason', '').strip() or None
     try:
-        void_transaction(transaction_id)
-        flash(f'Transaction voided and stock restored.', 'success')
+        void_transaction(transaction_id, voided_by=session.get('user_id'), reason=reason)
+        flash('Transaction voided and stock restored. Void record saved for audit.', 'success')
     except Exception as e:
         flash(f'Error voiding transaction: {e}', 'error')
     return redirect(url_for('transactions'))
@@ -532,7 +568,11 @@ def settings_page():
 @app.route('/settings/save', methods=['POST'])
 @superadmin_required
 def save_settings_route():
+    # Validate TIN format loosely — strip non-digits then check length
+    tin_raw = request.form.get('tin_number', '').strip()
+
     data = {
+        # ── Appearance ────────────────────────────────────────
         'store_name':      request.form.get('store_name', '').strip() or 'My Store',
         'store_tagline':   request.form.get('store_tagline', '').strip(),
         'currency_symbol': request.form.get('currency_symbol', '₱').strip() or '₱',
@@ -541,6 +581,16 @@ def save_settings_route():
         'font':            request.form.get('font', 'nunito'),
         'logo_emoji':      request.form.get('logo_emoji', '🛒').strip(),
         'receipt_footer':  request.form.get('receipt_footer', '').strip(),
+        # ── Business Details ──────────────────────────────────
+        'tin_number':      tin_raw,
+        'bir_permit':      request.form.get('bir_permit', '').strip(),
+        'dti_sec_number':  request.form.get('dti_sec_number', '').strip(),
+        'business_address':request.form.get('business_address', '').strip(),
+        'business_contact':request.form.get('business_contact', '').strip(),
+        # ── Tax Settings ──────────────────────────────────────
+        'tax_enabled':     '1' if request.form.get('tax_enabled') else '0',
+        'tax_rate':        request.form.get('tax_rate', '12').strip() or '12',
+        'tax_inclusive':   '1' if request.form.get('tax_inclusive') else '0',
     }
     save_settings(data)
     flash('Settings saved! Refresh the page to see changes.', 'success')
@@ -588,6 +638,7 @@ def not_found(e):
 
 if __name__ == '__main__':
     init_db()
+    migrate_db()
     seed_default_users()
     debug = os.getenv('FLASK_DEBUG','1') == '1'
     port  = int(os.getenv('FLASK_PORT', 5000))

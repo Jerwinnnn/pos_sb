@@ -86,6 +86,11 @@
         <a href="#" onclick="openPolicyModal('{{ url_for('cookie_policy') }}','Cookie Policy');return false" style="font-size:.6875rem;color:rgba(155,163,184,.6);text-decoration:none" onmouseover="this.style.color='rgba(155,163,184,1)'" onmouseout="this.style.color='rgba(155,163,184,.6)'">Cookies</a>
         <a href="#" onclick="openPolicyModal('{{ url_for('refund_policy') }}','Refund Policy');return false" style="font-size:.6875rem;color:rgba(155,163,184,.6);text-decoration:none" onmouseover="this.style.color='rgba(155,163,184,1)'" onmouseout="this.style.color='rgba(155,163,184,.6)'">Refunds</a>
       </div>
+      <div style="margin-top:.625rem;font-size:.5875rem;color:rgba(155,163,184,.35);line-height:1.5">
+        &copy; {{ current_year }} {{ app_name }}. All rights reserved.<br>
+        Product images are property of their respective owners.<br>
+        Governed by Philippine law.
+      </div>
     </div>
   </aside>
 

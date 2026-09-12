@@ -7,6 +7,7 @@ import json, os
 SETTINGS_PATH = os.path.join(os.path.dirname(__file__), 'settings.json')
 
 DEFAULTS = {
+    # ── Appearance ────────────────────────────────────────────
     'store_name':       'My Store',
     'store_tagline':    'Point of Sale System',
     'currency_symbol':  '₱',
@@ -15,6 +16,16 @@ DEFAULTS = {
     'font':             'nunito',
     'logo_emoji':       '🛒',
     'receipt_footer':   'Thank you for your purchase!',
+    # ── Business Details (BIR / DTI compliance) ───────────────
+    'tin_number':       '',          # BIR Tax Identification Number (XXX-XXX-XXX-XXXXX)
+    'bir_permit':       '',          # BIR Authority to Print / Accreditation No.
+    'dti_sec_number':   '',          # DTI or SEC registration number
+    'business_address': '',          # Full registered business address
+    'business_contact': '',          # Phone / email shown on receipts
+    # ── Tax Settings (Philippine VAT — TRAIN Law, RA 10963) ───
+    'tax_enabled':      '0',         # '1' = VAT enabled, '0' = disabled / non-VAT registered
+    'tax_rate':         '12',        # VAT rate in percent (12% standard PH rate)
+    'tax_inclusive':    '1',         # '1' = prices already include VAT (most common in PH retail)
 }
 
 THEME_PRESETS = {
